@@ -23,29 +23,24 @@ export const createVerification = async (req, res) => {
       });
     }
 
-    console.log("1. Controller reached");
-    console.log("2. Creating verification");
     const verification_id = await ev.createVerification({
       email,
       otpHash,
       purpose,
     });
 
-    console.log("3. Verification created:", verification_id);
-    console.log("4. Sending email");
     //send otp to user email
-    // await brevo.transactionalEmails.sendTransacEmail({
-    //   subject: "One-Time-Password for Account Verification",
-    //   textContent: `Your verification code is: ${otp}. Please do not share this code with anyone.`,
-    //   sender: {
-    //     name: "Grace Christian Academy",
-    //     email: process.env.BREVO_SENDER_EMAIL,
-    //   },
-    //   to: [{ email: req.body.email }],
-    // });
+    await brevo.transactionalEmails.sendTransacEmail({
+      subject: "One-Time-Password for Account Verification",
+      textContent: `Your verification code is: ${otp}. Please do not share this code with anyone.`,
+      sender: {
+        name: "Grace Christian Academy",
+        email: process.env.BREVO_SENDER_EMAIL,
+      },
+      to: [{ email: req.body.email }],
+    });
 
     console.log(otp);
-    console.log("5. Email sent");
 
     res.status(201).json({
       message: "verification code sent",

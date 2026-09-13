@@ -1,5 +1,4 @@
 import * as pe from "../models/preEnrollmentModel.js";
-import * as ev from "../models/emailVerificationModel.js";
 
 export const createApplication = async (req, res) => {
   try {

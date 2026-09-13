@@ -15,13 +15,6 @@ const router = express.Router();
 
 router.post("/application", createApplication);
 
-router.get("/test", authenticate, authorize("admin"), (req, res) => {
-  res.json({
-    message: "Authentication successful",
-    user: req.user,
-  });
-});
-
 router.get(
   "/applications/recent",
   authenticate,
