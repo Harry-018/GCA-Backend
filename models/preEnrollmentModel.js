@@ -50,12 +50,22 @@ export const applyApplication = async (data) => {
 
     const appNo = ng.applicationNo();
 
+    const activeSY = await trx
+      .selectFrom("school_years")
+      .select("school_year_id")
+      .where("sy_status", "=", "active")
+      .executeTakeFirst();
+
+    if (!activeSY) {
+      throw new Error("There is currently no active school year.");
+    }
+
     const application = await trx
       .insertInto("applications")
       .values({
         application_no: appNo,
         grade_level_id: data.grade_level_id,
-        school_year_id: data.school_year_id,
+        school_year_id: activeSY.school_year_id,
         applicant_info_id: info_id,
         verification_id: data.verification_id,
         application_status: data.application_status,

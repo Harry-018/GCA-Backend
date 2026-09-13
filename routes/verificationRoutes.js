@@ -5,7 +5,7 @@ import {
 } from "../controllers/emailVerificationController.js";
 const router = express.Router();
 
-router.post("/", createVerification);
+router.post("/send", createVerification);
 router.post("/verify", verifyOtp);
 
 export default router;
