@@ -16,6 +16,6 @@ app.use("/api/email-verification", ev);
 app.use("/api/academics", acad);
 app.use("/api/payments", po);
 
-app.listen(process.env.PORT, () => {
+app.listen(process.env.PORT || 5000, () => {
   console.log(`server running on port ${process.env.PORT}`);
 });
