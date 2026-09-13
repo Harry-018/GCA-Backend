@@ -3,8 +3,6 @@ import { BrevoClient } from "@getbrevo/brevo";
 import * as ev from "../models/emailVerificationModel.js";
 
 export const createVerification = async (req, res) => {
-  console.log("CREATE VERIFICATION REACHED");
-
   try {
     const { email, purpose } = req.body;
     const { otp, otpHash } = generateOtp();
