@@ -3,6 +3,7 @@ import { Kysely, MysqlDialect } from "kysely";
 import dotenv from "dotenv";
 
 dotenv.config();
+
 const db = new Kysely({
   dialect: new MysqlDialect({
     pool: mysql.createPool({
@@ -16,9 +17,11 @@ const db = new Kysely({
         process.env.DB_SSL === "true"
           ? {
               minVersion: "TLSv1.2",
+              rejectUnauthorized: true,
             }
           : undefined,
     }),
   }),
 });
+
 export default db;
