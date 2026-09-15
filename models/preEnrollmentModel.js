@@ -6,6 +6,19 @@ export const applyApplication = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const verification = await getVerification(data.verification_id);
 
+    const checkDuplicate = await trx
+      .selectFrom("applicant_info")
+      .select(["applicant_info_id"])
+      .where("first_name", "=", data.first_name)
+      .where("last_name", "=", data.last_name)
+      .where("middle_name", "=", data.middle_name)
+      .where("bdate", "=", data.bdate)
+      .executeTakeFirst();
+
+    if (checkDuplicate) {
+      throw new Error("Applicant already exists.");
+    }
+
     if (!verification) {
       throw new Error("Email verification not found.");
     }
