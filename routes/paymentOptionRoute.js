@@ -14,12 +14,7 @@ import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get(
-  "/payment-option",
-  authenticate,
-  authorize("admin"),
-  getPaymentOptions,
-);
+router.get("/payment-option", getPaymentOptions);
 
 router.post(
   "/payment-option",
@@ -42,17 +37,10 @@ router.delete(
   deletePaymentOption,
 );
 
-router.get(
-  "/fees-gradelevel/:grade_level_id",
-  authenticate,
-  authorize("admin"),
-  getFeesInGradeLevels,
-);
+router.get("/fees-gradelevel/:grade_level_id", getFeesInGradeLevels);
 
 router.get(
   "/payment-gradelevel/:grade_level_id",
-  authenticate,
-  authorize("admin"),
   getPaymentOptionsInGradeLevels,
 );
 

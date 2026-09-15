@@ -9,3 +9,5 @@ export const hashPassword = async (password) => {
 export const comparePassword = async (password, hashedPassword) => {
   return await bcrypt.compare(password, hashedPassword);
 };
+
+//parent@gmail.com || parent-benten, teacher@gmail.com || teacher-gwenten, admin@gmail.com || admin-maxten

@@ -34,7 +34,7 @@ router.patch(
   editSchoolYear,
 );
 
-router.get("/grade-level", authenticate, authorize("admin"), getGradeLevels);
+router.get("/grade-level", getGradeLevels);
 
 router.get(
   "/grade-level/:grade_level_id",

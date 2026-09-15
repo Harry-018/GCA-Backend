@@ -3,8 +3,6 @@ import { generateToken } from "../functions/tokenGenerator.js";
 import { comparePassword } from "../functions/passwordHashing.js";
 
 export const authenticateUser = async (req, res) => {
-  console.log("LOGIN CONTROLLER REACHED");
-
   try {
     const { email, password } = req.body;
 

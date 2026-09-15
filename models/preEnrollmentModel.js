@@ -34,7 +34,7 @@ export const applyApplication = async (data) => {
       .values({
         first_name: data.s_first_name,
         last_name: data.s_last_name,
-        mid_name: data.s_mid_name,
+        middle_name: data.s_mid_name,
         gender: data.s_gender,
         bdate: data.s_bdate,
         birthplace: data.s_birthplace,
