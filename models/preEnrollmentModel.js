@@ -1,33 +1,26 @@
 import db from "../config/db.js";
 import * as ng from "../functions/NumberGenerator.js";
 import { getVerification } from "./emailVerificationModel.js";
-
 export const applyApplication = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const verification = await getVerification(data.verification_id);
-
-    const checkDuplicate = await trx
-      .selectFrom("applicant_info")
-      .select(["applicant_info_id"])
-      .where("first_name", "=", data.first_name)
-      .where("last_name", "=", data.last_name)
-      .where("middle_name", "=", data.middle_name)
-      .where("bdate", "=", data.bdate)
-      .executeTakeFirst();
-
-    if (checkDuplicate) {
-      throw new Error("Applicant already exists.");
-    }
-
     if (!verification) {
       throw new Error("Email verification not found.");
     }
-
     if (!verification.verified_at) {
       throw new Error("Email has not been verified.");
     }
-
-    //insert into applicant address
+    const checkDuplicate = await trx
+      .selectFrom("applicant_info")
+      .select(["applicant_info_id"])
+      .where("first_name", "=", data.s_first_name)
+      .where("last_name", "=", data.s_last_name)
+      .where("middle_name", "=", data.s_mid_name)
+      .where("bdate", "=", data.s_bdate)
+      .executeTakeFirst();
+    if (checkDuplicate) {
+      throw new Error("Applicant already exists.");
+    }
     const address = await trx
       .insertInto("applicant_address")
       .values({
@@ -38,10 +31,7 @@ export const applyApplication = async (data) => {
         zipcode: data.zipcode,
       })
       .executeTakeFirst();
-
     const address_id = Number(address.insertId);
-
-    //insert into applicant info
     const info = await trx
       .insertInto("applicant_info")
       .values({
@@ -55,24 +45,19 @@ export const applyApplication = async (data) => {
         nationality: data.s_nationality,
         disabled: data.s_disabled,
         disability: data.s_disability,
-        address_id: address_id,
+        address_id,
       })
       .executeTakeFirst();
-
     const info_id = Number(info.insertId);
-
     const appNo = ng.applicationNo();
-
     const activeSY = await trx
       .selectFrom("school_years")
       .select("school_year_id")
       .where("sy_status", "=", "active")
       .executeTakeFirst();
-
     if (!activeSY) {
       throw new Error("There is currently no active school year.");
     }
-
     const application = await trx
       .insertInto("applications")
       .values({
@@ -86,10 +71,7 @@ export const applyApplication = async (data) => {
         rejection_reason_id: data.rejection_reason_id,
       })
       .executeTakeFirst();
-
     const application_id = Number(application.insertId);
-
-    //insert into parent info
     for (const parent of data.parents) {
       const parentInfo = await trx
         .insertInto("parent_info")
@@ -102,9 +84,7 @@ export const applyApplication = async (data) => {
           email: parent.p_email,
         })
         .executeTakeFirst();
-
       const parent_id = Number(parentInfo.insertId);
-
       await trx
         .insertInto("applicant_parent")
         .values({
@@ -115,33 +95,72 @@ export const applyApplication = async (data) => {
         })
         .executeTakeFirst();
     }
-
-    return {
-      application_id,
-      application_no: appNo,
-    };
+    return { application_id, application_no: appNo };
   });
 };
-
 export const getRecentApplications = async () => {
   return await db
     .selectFrom("applications")
     .selectAll()
+    .where("application_status", "=", "pending")
     .orderBy("date_applied", "desc")
     .limit(10)
-    .where("application_status", "=", "pending")
     .execute();
 };
-
-export const getApplications = async (app_status) => {
-  let query = db.selectFrom("applications").selectAll();
+const buildApplicationsQuery = ({ app_status, search }) => {
+  let qb = db
+    .selectFrom("applications as a")
+    .innerJoin(
+      "applicant_info as ai",
+      "ai.applicant_info_id",
+      "a.applicant_info_id",
+    )
+    .innerJoin("grade_levels as gl", "gl.grade_level_id", "a.grade_level_id");
   if (app_status) {
-    query = query.where("application_status", "=", app_status);
+    qb = qb.where("a.application_status", "=", app_status);
   }
-
-  return await query.execute();
+  if (search) {
+    const term = `%${search}%`;
+    qb = qb.where((eb) =>
+      eb.or([
+        eb("a.application_no", "like", term),
+        eb("ai.first_name", "like", term),
+        eb("ai.last_name", "like", term),
+        eb(
+          eb.fn("concat", ["ai.first_name", eb.val(" "), "ai.last_name"]),
+          "like",
+          term,
+        ),
+      ]),
+    );
+  }
+  return qb;
 };
-
+export const getApplications = async (app_status, page, limit, search) => {
+  const offset = (page - 1) * limit;
+  const applications = await buildApplicationsQuery({ app_status, search })
+    .select([
+      "a.application_id",
+      "a.application_no",
+      "a.application_status",
+      "a.date_applied",
+      "a.rejected_at",
+      "ai.first_name",
+      "ai.last_name",
+      "gl.grade_level_name as grade_level",
+    ])
+    .orderBy("a.date_applied", "desc")
+    .orderBy("a.application_id", "desc")
+    .limit(limit)
+    .offset(offset)
+    .execute();
+  const countResult = await buildApplicationsQuery({ app_status, search })
+    .select(({ fn }) => fn.countAll().as("total"))
+    .executeTakeFirst();
+  const total = Number(countResult?.total ?? 0);
+  const totalPages = Math.ceil(total / limit);
+  return { applications, total, totalPages };
+};
 export const getApplicationById = async (application_id) => {
   return await db
     .selectFrom("applications")
@@ -149,7 +168,6 @@ export const getApplicationById = async (application_id) => {
     .where("application_id", "=", application_id)
     .executeTakeFirst();
 };
-
 export const approveApplicant = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const updateApplicant = await trx
@@ -158,11 +176,9 @@ export const approveApplicant = async (data) => {
       .where("application_id", "=", data.application_id)
       .where("application_status", "=", "pending")
       .executeTakeFirst();
-
     if (Number(updateApplicant.numUpdatedRows) !== 1) {
       throw new Error("Application does not exist or is not pending.");
     }
-
     const insertApproval = await trx
       .insertInto("app_approval")
       .values({
@@ -173,18 +189,16 @@ export const approveApplicant = async (data) => {
         to_time: data.to_time,
         approval_status: "approved",
         approved_at: new Date(),
-        reject_at: null,
+        rejected_at: null,
         rejection_reason_id: null,
       })
       .executeTakeFirst();
-
     return {
       application_id: data.application_id,
       approval_id: Number(insertApproval.insertId),
     };
   });
 };
-
 export const bulkApproveApplicants = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const updateApplicant = await trx
@@ -193,7 +207,6 @@ export const bulkApproveApplicants = async (data) => {
       .where("application_id", "in", data.application_ids)
       .where("application_status", "=", "pending")
       .executeTakeFirst();
-
     if (
       Number(updateApplicant.numUpdatedRows) !== data.application_ids.length
     ) {
@@ -201,7 +214,6 @@ export const bulkApproveApplicants = async (data) => {
         "Some applications do not exist or are no longer pending.",
       );
     }
-
     const approvals = data.application_ids.map((application_id) => ({
       application_id,
       purpose: "application",
@@ -210,19 +222,16 @@ export const bulkApproveApplicants = async (data) => {
       to_time: data.to_time,
       approval_status: "approved",
       approved_at: new Date(),
-      reject_at: null,
+      rejected_at: null,
       rejection_reason_id: null,
     }));
-
     await trx.insertInto("app_approval").values(approvals).execute();
-
     return {
       application_ids: data.application_ids,
       approved_count: data.application_ids.length,
     };
   });
 };
-
 export const rejectApplicant = async (data) => {
   const result = await db
     .updateTable("applications")
@@ -234,26 +243,20 @@ export const rejectApplicant = async (data) => {
     .where("application_id", "=", data.application_id)
     .where("application_status", "=", "pending")
     .executeTakeFirst();
-
   if (Number(result.numUpdatedRows) !== 1) {
     throw new Error("Application does not exist or is not pending.");
   }
-
-  return {
-    application_id: data.application_id,
-  };
+  return { application_id: data.application_id };
 };
-
-export const getApprovedApplicants = async (data) => {
+export const getApprovedApplicants = async (sub_date) => {
   return await db
     .selectFrom("app_approval")
     .selectAll()
-    .where("sub_date", "=", data.sub_date)
+    .where("sub_date", "=", sub_date)
     .where("approval_status", "=", "approved")
     .orderBy("from_time", "asc")
     .execute();
 };
-
 export const enrollApplicant = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const approval = await trx
@@ -262,21 +265,17 @@ export const enrollApplicant = async (data) => {
       .where("approval_id", "=", data.app_approval_id)
       .where("approval_status", "=", "approved")
       .executeTakeFirst();
-
     if (!approval) {
       throw new Error("Approved application not found.");
     }
-
     const existingSubmission = await trx
       .selectFrom("submissions")
       .select("submission_id")
       .where("app_approval_id", "=", data.app_approval_id)
       .executeTakeFirst();
-
     if (existingSubmission) {
       throw new Error("Applicant has already been submitted.");
     }
-
     const insertSubmission = await trx
       .insertInto("submissions")
       .values({
@@ -284,12 +283,10 @@ export const enrollApplicant = async (data) => {
         sub_status: "confirmed",
         rejection_reason_id: null,
         received_at: new Date(),
-        received_by: selectAdmin.user_id,
+        received_by: data.received_by,
       })
       .executeTakeFirst();
-
     const submission_id = Number(insertSubmission.insertId);
-
     const officialStudent = await trx
       .insertInto("students")
       .values({
@@ -299,10 +296,6 @@ export const enrollApplicant = async (data) => {
         stu_status: "active",
       })
       .executeTakeFirst();
-
-    return {
-      submission_id,
-      student_id: Number(officialStudent.insertId),
-    };
+    return { submission_id, student_id: Number(officialStudent.insertId) };
   });
 };

@@ -1,121 +1,97 @@
 import * as pe from "../models/preEnrollmentModel.js";
-
 export const createApplication = async (req, res) => {
   try {
     const application = await pe.applyApplication(req.body);
-
-    res.status(201).json({
-      message: "Application Successful",
-      data: application,
-    });
+    res
+      .status(201)
+      .json({ message: "Application Successful", data: application });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
-
 export const getRecentApplications = async (req, res) => {
   try {
     const recentApplications = await pe.getRecentApplications();
-
     res.status(200).json({ data: recentApplications });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 export const getApplications = async (req, res) => {
   try {
-    const applications = await pe.getApplications(req.query.application_status);
-
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const result = await pe.getApplications(
+      req.query.application_status,
+      page,
+      limit,
+      req.query.search,
+    );
     res.status(200).json({
-      data: applications,
+      data: result.applications,
+      pagination: {
+        page,
+        limit,
+        total: result.total,
+        totalPages: result.totalPages,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 export const getApplicant = async (req, res) => {
   try {
     const applicant = await pe.getApplicationById(req.params.application_id);
-
     res.status(200).json({ data: applicant });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 export const approveApplicant = async (req, res) => {
   try {
     const approved = await pe.approveApplicant(req.body);
-
-    res.status(200).json({
-      message: "Applicant Approved",
-      data: approved,
-    });
+    res.status(200).json({ message: "Applicant Approved", data: approved });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
-
 export const bulkApproveApplicants = async (req, res) => {
   try {
     const approved = await pe.bulkApproveApplicants(req.body);
-
-    res.status(200).json({
-      message: "Applicant Approved",
-      data: approved,
-    });
+    res.status(200).json({ message: "Applicants Approved", data: approved });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
-
 export const rejectApplicant = async (req, res) => {
   try {
-    const reject = await pe.rejectApplicant({
+    const rejected = await pe.rejectApplicant({
       application_id: req.params.application_id,
       rejection_reason_id: req.body.rejection_reason_id,
     });
-
-    res.status(200).json({
-      message: "Applicant rejected successfully",
-      data: reject,
-    });
+    res
+      .status(200)
+      .json({ message: "Applicant rejected successfully", data: rejected });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 export const getApprovedApplicants = async (req, res) => {
   try {
     const approved = await pe.getApprovedApplicants(req.query.sub_date);
-
-    res.status(200).json({
-      data: approved,
-    });
+    res.status(200).json({ data: approved });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 export const enrollApplicant = async (req, res) => {
   try {
     const student = await pe.enrollApplicant({
       app_approval_id: req.params.app_approval_id,
       received_by: req.user.user_id,
     });
-
-    res.status(201).json({
-      message: "Enrolling Successful",
-      data: student,
-    });
+    res.status(201).json({ message: "Enrolling Successful", data: student });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
