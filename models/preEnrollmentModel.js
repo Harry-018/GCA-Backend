@@ -1,6 +1,7 @@
 import db from "../config/db.js";
 import * as ng from "../functions/NumberGenerator.js";
 import { getVerification } from "./emailVerificationModel.js";
+
 export const applyApplication = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const verification = await getVerification(data.verification_id);
@@ -98,6 +99,7 @@ export const applyApplication = async (data) => {
     return { application_id, application_no: appNo };
   });
 };
+
 export const getRecentApplications = async () => {
   return await db
     .selectFrom("applications")
@@ -107,6 +109,7 @@ export const getRecentApplications = async () => {
     .limit(10)
     .execute();
 };
+
 const buildApplicationsQuery = ({ app_status, search }) => {
   let qb = db
     .selectFrom("applications as a")
@@ -136,6 +139,7 @@ const buildApplicationsQuery = ({ app_status, search }) => {
   }
   return qb;
 };
+
 export const getApplications = async (app_status, page, limit, search) => {
   const offset = (page - 1) * limit;
   const applications = await buildApplicationsQuery({ app_status, search })
@@ -161,13 +165,77 @@ export const getApplications = async (app_status, page, limit, search) => {
   const totalPages = Math.ceil(total / limit);
   return { applications, total, totalPages };
 };
+
 export const getApplicationById = async (application_id) => {
-  return await db
-    .selectFrom("applications")
-    .selectAll()
-    .where("application_id", "=", application_id)
+  const application = await db
+    .selectFrom("applications as a")
+    .innerJoin(
+      "applicant_info as ai",
+      "ai.applicant_info_id",
+      "a.applicant_info_id",
+    )
+    .innerJoin("applicant_address as aa", "aa.address_id", "ai.address_id")
+    .innerJoin("grade_levels as gl", "gl.grade_level_id", "a.grade_level_id")
+    .select([
+      "a.application_id",
+      "a.application_no",
+      "a.application_status",
+      "a.date_applied",
+      "a.rejected_at",
+      "a.rejection_reason_id",
+      "a.gradelevel_paymentoption_id",
+
+      "ai.applicant_info_id",
+      "ai.first_name",
+      "ai.middle_name",
+      "ai.last_name",
+      "ai.gender",
+      "ai.bdate",
+      "ai.birthplace",
+      "ai.religion",
+      "ai.nationality",
+      "ai.disabled",
+      "ai.disability",
+
+      "aa.province",
+      "aa.city_municipality",
+      "aa.barangay",
+      "aa.house_no",
+      "aa.zipcode",
+
+      "gl.grade_level_name",
+    ])
+    .where("a.application_id", "=", application_id)
     .executeTakeFirst();
+
+  if (!application) {
+    throw new Error("Application not found.");
+  }
+
+  const parents = await db
+    .selectFrom("applicant_parent as ap")
+    .innerJoin("parent_info as pi", "pi.parent_info_id", "ap.parent_info_id")
+    .select([
+      "ap.relationship_type",
+      "ap.will_receive_account",
+
+      "pi.parent_info_id",
+      "pi.first_name",
+      "pi.middle_name",
+      "pi.last_name",
+      "pi.contact_number",
+      "pi.occupation",
+      "pi.email",
+    ])
+    .where("ap.application_id", "=", application_id)
+    .execute();
+
+  return {
+    ...application,
+    parents,
+  };
 };
+
 export const approveApplicant = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const updateApplicant = await trx
@@ -199,6 +267,7 @@ export const approveApplicant = async (data) => {
     };
   });
 };
+
 export const bulkApproveApplicants = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const updateApplicant = await trx
@@ -232,6 +301,7 @@ export const bulkApproveApplicants = async (data) => {
     };
   });
 };
+
 export const rejectApplicant = async (data) => {
   const result = await db
     .updateTable("applications")
@@ -248,6 +318,7 @@ export const rejectApplicant = async (data) => {
   }
   return { application_id: data.application_id };
 };
+
 export const getApprovedApplicants = async (sub_date) => {
   return await db
     .selectFrom("app_approval")
@@ -257,6 +328,7 @@ export const getApprovedApplicants = async (sub_date) => {
     .orderBy("from_time", "asc")
     .execute();
 };
+
 export const enrollApplicant = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const approval = await trx
