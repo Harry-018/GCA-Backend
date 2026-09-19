@@ -174,6 +174,12 @@ export const getApplicationById = async (application_id) => {
       "a.applicant_info_id",
     )
     .innerJoin("applicant_address as aa", "aa.address_id", "ai.address_id")
+
+    .innerJoin(
+      "email_verification as ev",
+      "ev.verification_id",
+      "a.verification_id",
+    )
     .innerJoin("grade_levels as gl", "gl.grade_level_id", "a.grade_level_id")
     .select([
       "a.application_id",
@@ -183,6 +189,7 @@ export const getApplicationById = async (application_id) => {
       "a.rejected_at",
       "a.rejection_reason_id",
       "a.gradelevel_paymentoption_id",
+      "ev.email",
       "ai.applicant_info_id",
       "ai.first_name",
       "ai.middle_name",
@@ -230,6 +237,7 @@ export const getApplicationById = async (application_id) => {
   return {
     application_id: application.application_id,
     application_no: application.application_no,
+    email: application.email,
     status: application.application_status,
     dateApplied: application.date_applied,
     rejected_at: application.rejected_at,
