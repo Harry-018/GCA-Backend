@@ -6,6 +6,7 @@ import {
   getApplicant,
   approveApplicant,
   bulkApproveApplicants,
+  getRejectionReasons,
   rejectApplicant,
   getApprovedApplicants,
   enrollApplicant,
@@ -37,6 +38,13 @@ router.patch(
   authenticate,
   authorize("admin"),
   bulkApproveApplicants,
+);
+
+router.get(
+  "/rejection-reasons",
+  authenticate,
+  authorize("admin"),
+  getRejectionReasons,
 );
 router.patch(
   "/applications/:application_id/reject",
