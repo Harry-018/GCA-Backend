@@ -353,6 +353,14 @@ export const bulkApproveApplicants = async (data) => {
   });
 };
 
+export const getRejectionReasons = async () => {
+  return await db
+    .selectFrom("rejection")
+    .selectAll()
+    .orderBy("rejection_reason_id", "asc")
+    .execute();
+};
+
 export const rejectApplicant = async (data) => {
   const result = await db
     .updateTable("applications")
