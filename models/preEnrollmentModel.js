@@ -153,8 +153,7 @@ export const getApplications = async (app_status, page, limit, search) => {
       "ai.last_name",
       "gl.grade_level_name as grade_level",
     ])
-    .orderBy("a.date_applied", "desc")
-    .orderBy("a.application_id", "desc")
+    .orderBy("a.date_applied", "asc")
     .limit(limit)
     .offset(offset)
     .execute();
