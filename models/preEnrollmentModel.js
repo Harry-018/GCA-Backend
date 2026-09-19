@@ -211,6 +211,7 @@ export const getApplicationById = async (application_id) => {
     .selectFrom("applicant_parent as ap")
     .innerJoin("parent_info as pi", "pi.parent_info_id", "ap.parent_info_id")
     .select([
+      "ap.app_parent_id",
       "ap.relationship_type",
       "ap.will_receive_account",
       "pi.parent_info_id",
@@ -222,16 +223,11 @@ export const getApplicationById = async (application_id) => {
       "pi.email",
     ])
     .where("ap.application_id", "=", application_id)
+    .orderBy("ap.app_parent_id", "asc")
     .execute();
-  const father = parents.find(
-    (parent) => parent.relationship_type.toLowerCase() === "father",
-  );
-  const mother = parents.find(
-    (parent) => parent.relationship_type.toLowerCase() === "mother",
-  );
-  const guardian = parents.find(
-    (parent) => parent.relationship_type.toLowerCase() === "guardian",
-  );
+  const father = parents[0] || {};
+  const mother = parents[1] || {};
+  const guardian = parents[2] || {};
   return {
     application_id: application.application_id,
     application_no: application.application_no,
