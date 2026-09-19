@@ -118,6 +118,11 @@ const buildApplicationsQuery = ({ app_status, search }) => {
       "ai.applicant_info_id",
       "a.applicant_info_id",
     )
+    .innerJoin(
+      "email_verification as ev",
+      "ev.verification_id",
+      "a.verification_id",
+    )
     .innerJoin("grade_levels as gl", "gl.grade_level_id", "a.grade_level_id");
   if (app_status) {
     qb = qb.where("a.application_status", "=", app_status);
@@ -149,6 +154,7 @@ export const getApplications = async (app_status, page, limit, search) => {
       "a.application_status",
       "a.date_applied",
       "a.rejected_at",
+      "ev.email",
       "ai.first_name",
       "ai.last_name",
       "gl.grade_level_name as grade_level",
