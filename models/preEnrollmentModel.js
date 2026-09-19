@@ -356,7 +356,7 @@ export const bulkApproveApplicants = async (data) => {
 export const getRejectionReasons = async () => {
   return await db
     .selectFrom("rejection")
-    .selectAll("rejection_reason_id", "rejection_reason")
+    .select(["rejection_reason_id", "rejection_reason"])
     .orderBy("rejection_reason_id", "asc")
     .execute();
 };
