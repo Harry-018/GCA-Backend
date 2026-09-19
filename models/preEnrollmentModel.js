@@ -184,7 +184,6 @@ export const getApplicationById = async (application_id) => {
       "a.rejected_at",
       "a.rejection_reason_id",
       "a.gradelevel_paymentoption_id",
-
       "ai.applicant_info_id",
       "ai.first_name",
       "ai.middle_name",
@@ -196,29 +195,24 @@ export const getApplicationById = async (application_id) => {
       "ai.nationality",
       "ai.disabled",
       "ai.disability",
-
       "aa.province",
       "aa.city_municipality",
       "aa.barangay",
       "aa.house_no",
       "aa.zipcode",
-
       "gl.grade_level_name",
     ])
     .where("a.application_id", "=", application_id)
     .executeTakeFirst();
-
   if (!application) {
     throw new Error("Application not found.");
   }
-
   const parents = await db
     .selectFrom("applicant_parent as ap")
     .innerJoin("parent_info as pi", "pi.parent_info_id", "ap.parent_info_id")
     .select([
       "ap.relationship_type",
       "ap.will_receive_account",
-
       "pi.parent_info_id",
       "pi.first_name",
       "pi.middle_name",
@@ -229,10 +223,71 @@ export const getApplicationById = async (application_id) => {
     ])
     .where("ap.application_id", "=", application_id)
     .execute();
-
+  const father = parents.find(
+    (parent) => parent.relationship_type.toLowerCase() === "father",
+  );
+  const mother = parents.find(
+    (parent) => parent.relationship_type.toLowerCase() === "mother",
+  );
+  const guardian = parents.find(
+    (parent) => parent.relationship_type.toLowerCase() === "guardian",
+  );
   return {
-    ...application,
-    parents,
+    application_id: application.application_id,
+    application_no: application.application_no,
+    status: application.application_status,
+    dateApplied: application.date_applied,
+    rejected_at: application.rejected_at,
+    rejection_reason_id: application.rejection_reason_id,
+    student: {
+      gradeLevel: application.grade_level_name,
+      firstName: application.first_name,
+      middleName: application.middle_name,
+      lastName: application.last_name,
+      gender: application.gender,
+      dateOfBirth: application.bdate,
+      placeOfBirth: application.birthplace,
+      religion: application.religion,
+      nationality: application.nationality,
+      disability: application.disabled ? application.disability : "None",
+    },
+    father: father
+      ? {
+          firstName: father.first_name,
+          middleName: father.middle_name,
+          lastName: father.last_name,
+          occupation: father.occupation,
+          contactNo: father.contact_number,
+          email: father.email,
+        }
+      : {},
+    mother: mother
+      ? {
+          firstName: mother.first_name,
+          middleName: mother.middle_name,
+          lastName: mother.last_name,
+          occupation: mother.occupation,
+          contactNo: mother.contact_number,
+          email: mother.email,
+        }
+      : {},
+    address: {
+      street: application.house_no,
+      barangay: application.barangay,
+      city: application.city_municipality,
+      province: application.province,
+      zipCode: application.zipcode,
+    },
+    guardian: guardian
+      ? {
+          firstName: guardian.first_name,
+          middleName: guardian.middle_name,
+          lastName: guardian.last_name,
+          occupation: guardian.occupation,
+          contactNo: guardian.contact_number,
+          email: guardian.email,
+        }
+      : {},
   };
 };
 
