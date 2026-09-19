@@ -64,6 +64,21 @@ export const bulkApproveApplicants = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const getRejectionReasons = async (req, res) => {
+  try {
+    const reasons = await pe.getRejectionReasons();
+
+    res.status(200).json({
+      data: reasons,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
 export const rejectApplicant = async (req, res) => {
   try {
     const rejected = await pe.rejectApplicant({
