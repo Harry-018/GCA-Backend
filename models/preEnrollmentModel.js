@@ -315,15 +315,35 @@ export const getApplicationById = async (application_id) => {
 
 export const approveApplicant = async (data) => {
   return await db.transaction().execute(async (trx) => {
-    const updateApplicant = await trx
-      .updateTable("applications")
-      .set({ application_status: "approved" })
-      .where("application_id", "=", data.application_id)
-      .where("application_status", "=", "pending")
+    const application = await trx
+      .selectFrom("applications as a")
+      .innerJoin(
+        "applicant_info as ai",
+        "ai.applicant_info_id",
+        "a.applicant_info_id",
+      )
+      .select([
+        "a.application_id",
+        "a.application_no",
+        "ai.first_name",
+        "ai.last_name",
+      ])
+      .where("a.application_id", "=", data.application_id)
+      .where("a.application_status", "=", "pending")
       .executeTakeFirst();
-    if (Number(updateApplicant.numUpdatedRows) !== 1) {
+
+    if (!application) {
       throw new Error("Application does not exist or is not pending.");
     }
+
+    await trx
+      .updateTable("applications")
+      .set({
+        application_status: "approved",
+      })
+      .where("application_id", "=", data.application_id)
+      .executeTakeFirst();
+
     const insertApproval = await trx
       .insertInto("app_approval")
       .values({
@@ -338,8 +358,14 @@ export const approveApplicant = async (data) => {
         rejection_reason_id: null,
       })
       .executeTakeFirst();
+
     return {
-      application_id: data.application_id,
+      application_id: application.application_id,
+      application_no: application.application_no,
+      applicant_name: `${application.first_name} ${application.last_name}`,
+      sub_date: data.sub_date,
+      from_time: data.from_time,
+      to_time: data.to_time,
       approval_id: Number(insertApproval.insertId),
     };
   });

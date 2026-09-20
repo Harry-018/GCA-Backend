@@ -1,4 +1,6 @@
+import { sendApplicationApproval } from "../emails/emailService.js";
 import * as pe from "../models/preEnrollmentModel.js";
+
 export const createApplication = async (req, res) => {
   try {
     const application = await pe.applyApplication(req.body);
@@ -50,12 +52,35 @@ export const getApplicant = async (req, res) => {
 };
 export const approveApplicant = async (req, res) => {
   try {
-    const approved = await pe.approveApplicant(req.body);
-    res.status(200).json({ message: "Applicant Approved", data: approved });
+    const approved = await pe.approveApplicant({
+      application_id: req.body.application_id,
+      sub_date: req.body.sub_date,
+      from_time: req.body.from_time,
+      to_time: req.body.to_time,
+    });
+
+    await sendApplicationApproval({
+      application_id: approved.application_id,
+      application_no: approved.application_no,
+      applicant_name: approved.applicant_name,
+      sub_date: approved.sub_date,
+      from_time: approved.from_time,
+      to_time: approved.to_time,
+    });
+
+    res.status(200).json({
+      message: "Applicant approved and confirmation email sent.",
+      data: approved,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Failed to approve applicant:", error);
+
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
+
 export const bulkApproveApplicants = async (req, res) => {
   try {
     const approved = await pe.bulkApproveApplicants(req.body);

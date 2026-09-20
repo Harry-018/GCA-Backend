@@ -1,5 +1,4 @@
 import { generateOtp, hashOtp } from "../functions/otp.js";
-import { BrevoClient } from "@getbrevo/brevo";
 import * as ev from "../models/emailVerificationModel.js";
 
 export const createVerification = async (req, res) => {
@@ -97,3 +96,5 @@ export const verifyOtp = async (req, res) => {
     });
   }
 };
+
+export const sendApplicationReceipt = async (req, res) => {};

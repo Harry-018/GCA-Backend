@@ -34,3 +34,17 @@ export const verifyEmail = async (verification_id) => {
 
   return true;
 };
+
+export const getEmailOfApprovedApplicant = async (application_id) => {
+  return await db
+    .selectFrom("applications as a")
+    .innerJoin(
+      "email_verification as ev",
+      "ev.verification_id",
+      "a.verification_id",
+    )
+    .select("ev.email")
+    .where("a.application_id", "=", application_id)
+    .where("ev.verified_at", "is not", null)
+    .executeTakeFirst();
+};

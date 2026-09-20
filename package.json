@@ -6,6 +6,8 @@
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.3",
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.1.0",
     "bcrypt": "^6.0.0",
     "cloudinary": "^1.41.3",
     "cors": "^2.8.6",
