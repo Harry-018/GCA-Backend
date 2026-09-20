@@ -84,7 +84,14 @@ export const applyApplication = async (data) => {
       })
       .executeTakeFirst();
     const application_id = Number(application.insertId);
-    for (const parent of data.parents) {
+
+    const parents = data.parents.filter((parent, index) => {
+      if (index < 2) return true;
+
+      return parent.p_first_name || parent.p_last_name;
+    });
+
+    for (const parent of parents) {
       const parentInfo = await trx
         .insertInto("parent_info")
         .values({
