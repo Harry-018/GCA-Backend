@@ -120,10 +120,27 @@ export const applyApplication = async (data) => {
 
 export const getRecentApplications = async () => {
   return await db
-    .selectFrom("applications")
-    .selectAll()
-    .where("application_status", "=", "pending")
-    .orderBy("date_applied", "desc")
+    .selectFrom("applications as a")
+    .innerJoin(
+      "applicant_info as ai",
+      "ai.applicant_info_id",
+      "a.applicant_info_id",
+    )
+    .innerJoin("grade_levels as gl", "gl.grade_level_id", "a.grade_level_id")
+    .select([
+      "a.application_id",
+      "a.application_no",
+      "a.application_status",
+      "a.date_applied",
+
+      "ai.first_name",
+      "ai.last_name",
+      "ai.gender",
+
+      "gl.grade_level_name as grade_level",
+    ])
+    .where("a.application_status", "=", "pending")
+    .orderBy("a.date_applied", "desc")
     .limit(10)
     .execute();
 };
