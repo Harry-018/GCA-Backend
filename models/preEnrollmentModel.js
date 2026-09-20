@@ -1,6 +1,17 @@
+import { sql } from "kysely";
 import db from "../config/db.js";
 import * as ng from "../functions/NumberGenerator.js";
 import { getVerification } from "./emailVerificationModel.js";
+
+const formatDateOnly = (date) => {
+  if (!date) return null;
+
+  if (typeof date === "string") {
+    return date.slice(0, 10);
+  }
+
+  return date.toISOString().slice(0, 10);
+};
 
 export const applyApplication = async (data) => {
   return await db.transaction().execute(async (trx) => {
@@ -202,6 +213,7 @@ export const getApplicationById = async (application_id) => {
       "ai.last_name",
       "ai.gender",
       "ai.bdate",
+      sql`TIMESTAMPDIFF(YEAR, ai.bdate, CURDATE())`.as("age"),
       "ai.birthplace",
       "ai.religion",
       "ai.nationality",
@@ -254,7 +266,8 @@ export const getApplicationById = async (application_id) => {
       middleName: application.middle_name,
       lastName: application.last_name,
       gender: application.gender,
-      dateOfBirth: application.bdate,
+      dateOfBirth: formatDateOnly(application.bdate),
+      age: application.age,
       placeOfBirth: application.birthplace,
       religion: application.religion,
       nationality: application.nationality,
