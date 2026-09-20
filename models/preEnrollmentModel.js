@@ -373,19 +373,37 @@ export const approveApplicant = async (data) => {
 
 export const bulkApproveApplicants = async (data) => {
   return await db.transaction().execute(async (trx) => {
-    const updateApplicant = await trx
-      .updateTable("applications")
-      .set({ application_status: "approved" })
-      .where("application_id", "in", data.application_ids)
-      .where("application_status", "=", "pending")
-      .executeTakeFirst();
-    if (
-      Number(updateApplicant.numUpdatedRows) !== data.application_ids.length
-    ) {
+    const applications = await trx
+      .selectFrom("applications as a")
+      .innerJoin(
+        "applicant_info as ai",
+        "ai.applicant_info_id",
+        "a.applicant_info_id",
+      )
+      .select([
+        "a.application_id",
+        "a.application_no",
+        "ai.first_name",
+        "ai.last_name",
+      ])
+      .where("a.application_id", "in", data.application_ids)
+      .where("a.application_status", "=", "pending")
+      .execute();
+
+    if (applications.length !== data.application_ids.length) {
       throw new Error(
         "Some applications do not exist or are no longer pending.",
       );
     }
+
+    await trx
+      .updateTable("applications")
+      .set({
+        application_status: "approved",
+      })
+      .where("application_id", "in", data.application_ids)
+      .execute();
+
     const approvals = data.application_ids.map((application_id) => ({
       application_id,
       purpose: "application",
@@ -397,10 +415,19 @@ export const bulkApproveApplicants = async (data) => {
       rejected_at: null,
       rejection_reason_id: null,
     }));
+
     await trx.insertInto("app_approval").values(approvals).execute();
+
     return {
-      application_ids: data.application_ids,
-      approved_count: data.application_ids.length,
+      applications: applications.map((application) => ({
+        application_id: application.application_id,
+        application_no: application.application_no,
+        applicant_name: `${application.first_name} ${application.last_name}`,
+        sub_date: data.sub_date,
+        from_time: data.from_time,
+        to_time: data.to_time,
+      })),
+      approved_count: applications.length,
     };
   });
 };

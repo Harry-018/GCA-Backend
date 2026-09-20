@@ -83,10 +83,47 @@ export const approveApplicant = async (req, res) => {
 
 export const bulkApproveApplicants = async (req, res) => {
   try {
-    const approved = await pe.bulkApproveApplicants(req.body);
-    res.status(200).json({ message: "Applicants Approved", data: approved });
+    const approved = await pe.bulkApproveApplicants({
+      application_ids: req.body.application_ids,
+      sub_date: req.body.sub_date,
+      from_time: req.body.from_time,
+      to_time: req.body.to_time,
+    });
+
+    for (const applicant of approved.applications) {
+      await sendApplicationApproval({
+        application_id: applicant.application_id,
+        application_no: applicant.application_no,
+        applicant_name: applicant.applicant_name,
+        sub_date: applicant.sub_date,
+        from_time: applicant.from_time,
+        to_time: applicant.to_time,
+      });
+    }
+
+    // await Promise.all(
+    //   approved.applications.map((applicant) =>
+    //     sendApplicationApproval({
+    //       application_id: applicant.application_id,
+    //       application_no: applicant.application_no,
+    //       applicant_name: applicant.applicant_name,
+    //       sub_date: applicant.sub_date,
+    //       from_time: applicant.from_time,
+    //       to_time: applicant.to_time,
+    //     }),
+    //   ),
+    // );
+
+    res.status(200).json({
+      message: "Applicants approved and confirmation emails sent.",
+      data: approved,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Failed to bulk approve applicants:", error);
+
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
 
