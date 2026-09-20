@@ -202,9 +202,6 @@ export const getApplicationById = async (application_id) => {
       "ai.last_name",
       "ai.gender",
       "ai.bdate",
-      eb
-        .fn("timestampdiff", ["year", "ai.bdate", eb.fn("curdate", [])])
-        .as("age"),
       "ai.birthplace",
       "ai.religion",
       "ai.nationality",
