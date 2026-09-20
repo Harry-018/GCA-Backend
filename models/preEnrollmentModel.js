@@ -172,6 +172,16 @@ export const getApplications = async (app_status, page, limit, search) => {
 };
 
 export const getApplicationById = async (application_id) => {
+  const formatDate = (date) => {
+    if (!date) return null;
+
+    if (typeof date === "string") {
+      return date.slice(0, 10);
+    }
+
+    return date.toISOString().slice(0, 10);
+  };
+
   const application = await db
     .selectFrom("applications as a")
     .innerJoin(
@@ -202,6 +212,9 @@ export const getApplicationById = async (application_id) => {
       "ai.last_name",
       "ai.gender",
       "ai.bdate",
+      eb
+        .fn("timestampdiff", ["year", "ai.bdate", eb.fn("curdate", [])])
+        .as("age"),
       "ai.birthplace",
       "ai.religion",
       "ai.nationality",
@@ -254,7 +267,7 @@ export const getApplicationById = async (application_id) => {
       middleName: application.middle_name,
       lastName: application.last_name,
       gender: application.gender,
-      dateOfBirth: application.bdate,
+      dateOfBirth: formatDate(application.bdate),
       placeOfBirth: application.birthplace,
       religion: application.religion,
       nationality: application.nationality,
