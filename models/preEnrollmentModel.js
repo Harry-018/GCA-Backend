@@ -481,7 +481,14 @@ export const rejectApplicant = async (data) => {
   return { application_id: data.application_id };
 };
 
-export const getApprovedApplicants = async (sub_date, search = "") => {
+export const getApprovedApplicants = async (
+  sub_date,
+  search = "",
+  page = 1,
+  limit = 10,
+) => {
+  const offset = (page - 1) * limit;
+
   let query = db
     .selectFrom("app_approval as aa")
     .innerJoin("applications as a", "a.application_id", "aa.application_id")
@@ -525,9 +532,51 @@ export const getApprovedApplicants = async (sub_date, search = "") => {
     );
   }
 
-  return await query.orderBy("aa.from_time", "asc").execute();
-};
+  const applicants = await query
+    .orderBy("aa.from_time", "asc")
+    .limit(limit)
+    .offset(offset)
+    .execute();
 
+  // Get total number of matching records
+  let countQuery = db
+    .selectFrom("app_approval as aa")
+    .innerJoin("applications as a", "a.application_id", "aa.application_id")
+    .innerJoin(
+      "applicant_info as ai",
+      "ai.applicant_info_id",
+      "a.applicant_info_id",
+    )
+    .select(({ fn }) => [fn.countAll().as("total")])
+    .where("aa.sub_date", "=", sub_date)
+    .where("aa.approval_status", "=", "approved");
+
+  if (search.trim()) {
+    const searchTerm = `%${search.trim()}%`;
+
+    countQuery = countQuery.where((eb) =>
+      eb.or([
+        eb("a.application_no", "like", searchTerm),
+        eb("ai.first_name", "like", searchTerm),
+        eb("ai.last_name", "like", searchTerm),
+      ]),
+    );
+  }
+
+  const countResult = await countQuery.executeTakeFirst();
+
+  const total = Number(countResult?.total ?? 0);
+
+  return {
+    data: applicants,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
 export const enrollApplicant = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const approval = await trx

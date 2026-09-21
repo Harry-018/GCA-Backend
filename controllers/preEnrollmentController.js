@@ -154,15 +154,19 @@ export const rejectApplicant = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 export const getApprovedApplicants = async (req, res) => {
   try {
-    const { sub_date, search = "" } = req.query;
+    const { sub_date, search = "", page = 1, limit = 10 } = req.query;
 
-    const approved = await pe.getApprovedApplicants(sub_date, search);
+    const approved = await pe.getApprovedApplicants(
+      sub_date,
+      search,
+      Number(page),
+      Number(limit),
+    );
 
-    res.status(200).json({
-      data: approved,
-    });
+    res.status(200).json(approved);
   } catch (error) {
     console.error("getApprovedApplicants:", error);
 
@@ -171,6 +175,7 @@ export const getApprovedApplicants = async (req, res) => {
     });
   }
 };
+
 export const enrollApplicant = async (req, res) => {
   try {
     const student = await pe.enrollApplicant({
