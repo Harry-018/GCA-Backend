@@ -490,27 +490,25 @@ export const getApprovedApplicants = async (sub_date) => {
       "ai.applicant_info_id",
       "a.applicant_info_id",
     )
-    .innerJoin(
-      "gradelevel_paymentoptions as gpo",
-      "gpo.gradelevel_paymentoption_id",
-      "a.gradelevel_paymentoption_id",
-    )
-    .innerJoin("grade_levels as gl", "gl.grade_level_id", "gpo.grade_level_id")
+    .innerJoin("grade_levels as gl", "gl.grade_level_id", "a.grade_level_id")
     .select([
-      "a.application_id",
+      "aa.app_approval_id",
+      "aa.application_id",
+      "aa.purpose",
+      "aa.sub_date",
+      "aa.from_time",
+      "aa.to_time",
+      "aa.approval_status",
+      "aa.approved_at",
+
       "a.application_no",
       "a.application_status",
+      "a.date_applied",
 
       "ai.first_name",
       "ai.last_name",
 
       "gl.grade_level_name as grade_level",
-
-      "aa.approval_id",
-      "aa.sub_date",
-      "aa.from_time",
-      "aa.to_time",
-      "aa.approval_status",
     ])
     .where("aa.sub_date", "=", sub_date)
     .where("aa.approval_status", "=", "approved")

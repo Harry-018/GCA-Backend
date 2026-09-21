@@ -162,12 +162,8 @@ export const getApprovedApplicants = async (req, res) => {
       data: approved,
     });
   } catch (error) {
-    console.error("getApprovedApplicants error:", error);
-
     res.status(500).json({
       message: error.message,
-      code: error.code,
-      sqlMessage: error.sqlMessage,
     });
   }
 };
