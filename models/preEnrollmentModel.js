@@ -577,25 +577,30 @@ export const getApprovedApplicants = async (
     },
   };
 };
+
 export const enrollApplicant = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const approval = await trx
       .selectFrom("app_approval")
       .selectAll()
-      .where("approval_id", "=", data.app_approval_id)
+      .where("app_approval_id", "=", data.app_approval_id)
       .where("approval_status", "=", "approved")
       .executeTakeFirst();
+
     if (!approval) {
       throw new Error("Approved application not found.");
     }
+
     const existingSubmission = await trx
       .selectFrom("submissions")
       .select("submission_id")
       .where("app_approval_id", "=", data.app_approval_id)
       .executeTakeFirst();
+
     if (existingSubmission) {
       throw new Error("Applicant has already been submitted.");
     }
+
     const insertSubmission = await trx
       .insertInto("submissions")
       .values({
@@ -606,7 +611,9 @@ export const enrollApplicant = async (data) => {
         received_by: data.received_by,
       })
       .executeTakeFirst();
+
     const submission_id = Number(insertSubmission.insertId);
+
     const officialStudent = await trx
       .insertInto("students")
       .values({
@@ -616,6 +623,10 @@ export const enrollApplicant = async (data) => {
         stu_status: "active",
       })
       .executeTakeFirst();
-    return { submission_id, student_id: Number(officialStudent.insertId) };
+
+    return {
+      submission_id,
+      student_id: Number(officialStudent.insertId),
+    };
   });
 };
