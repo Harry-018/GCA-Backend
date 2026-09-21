@@ -8,16 +8,25 @@ import acad from "./routes/academicRoute.js";
 import po from "./routes/paymentOptionRoute.js";
 
 dotenv.config();
+
+console.log("Starting server...");
+
 const app = express();
+
+console.log("Express created");
 
 app.use(express.json());
 app.use(cors());
+
+console.log("Middleware loaded");
+
 app.use("/api/auth", auth);
 app.use("/api/preEnrollment", pe);
-console.log("Loading verification routes...");
 app.use("/api/email-verification", ev);
 app.use("/api/academics", acad);
 app.use("/api/payments", po);
+
+console.log("Routes loaded");
 
 app.get("/test", (req, res) => {
   res.json({
@@ -25,6 +34,8 @@ app.get("/test", (req, res) => {
   });
 });
 
-app.listen(process.env.PORT || 5000, () => {
-  console.log(`server running on port ${process.env.PORT}`);
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
