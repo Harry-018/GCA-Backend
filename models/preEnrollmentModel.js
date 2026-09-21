@@ -490,7 +490,12 @@ export const getApprovedApplicants = async (sub_date) => {
       "ai.applicant_info_id",
       "a.applicant_info_id",
     )
-    .innerJoin("grade_levels as gl", "gl.grade_level_id", "a.grade_level_id")
+    .innerJoin(
+      "gradelevel_paymentoptions as gpo",
+      "gpo.gradelevel_paymentoption_id",
+      "a.gradelevel_paymentoption_id",
+    )
+    .innerJoin("grade_levels as gl", "gl.grade_level_id", "gpo.grade_level_id")
     .select([
       "a.application_id",
       "a.application_no",
