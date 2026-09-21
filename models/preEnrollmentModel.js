@@ -518,7 +518,13 @@ export const getApprovedApplicants = async (
       "gl.grade_level_name as grade_level",
     ])
     .where("aa.sub_date", "=", sub_date)
-    .where("aa.approval_status", "=", "approved");
+    .where("aa.approval_status", "=", "approved")
+    .whereNotExists(
+      db
+        .selectFrom("submissions as s")
+        .select("s.submission_id")
+        .whereRef("s.app_approval_id", "=", "aa.app_approval_id"),
+    );
 
   if (search.trim()) {
     const searchTerm = `%${search.trim()}%`;
@@ -549,7 +555,13 @@ export const getApprovedApplicants = async (
     )
     .select(({ fn }) => [fn.countAll().as("total")])
     .where("aa.sub_date", "=", sub_date)
-    .where("aa.approval_status", "=", "approved");
+    .where("aa.approval_status", "=", "approved")
+    .whereNotExists(
+      db
+        .selectFrom("submissions as s")
+        .select("s.submission_id")
+        .whereRef("s.app_approval_id", "=", "aa.app_approval_id"),
+    );
 
   if (search.trim()) {
     const searchTerm = `%${search.trim()}%`;
