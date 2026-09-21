@@ -42,7 +42,7 @@ export const authenticateUser = async (req, res) => {
         user_id: account.user_id,
         role: account.role,
       },
-      "10s",
+      "1hr",
     );
 
     res.status(200).json({
