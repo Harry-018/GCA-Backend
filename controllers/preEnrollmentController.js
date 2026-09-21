@@ -156,12 +156,16 @@ export const rejectApplicant = async (req, res) => {
 };
 export const getApprovedApplicants = async (req, res) => {
   try {
-    const approved = await pe.getApprovedApplicants(req.query.sub_date);
+    const { sub_date, search = "" } = req.query;
+
+    const approved = await pe.getApprovedApplicants(sub_date, search);
 
     res.status(200).json({
       data: approved,
     });
   } catch (error) {
+    console.error("getApprovedApplicants:", error);
+
     res.status(500).json({
       message: error.message,
     });

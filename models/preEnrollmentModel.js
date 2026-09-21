@@ -481,8 +481,8 @@ export const rejectApplicant = async (data) => {
   return { application_id: data.application_id };
 };
 
-export const getApprovedApplicants = async (sub_date) => {
-  return await db
+export const getApprovedApplicants = async (sub_date, search = "") => {
+  let query = db
     .selectFrom("app_approval as aa")
     .innerJoin("applications as a", "a.application_id", "aa.application_id")
     .innerJoin(
@@ -511,9 +511,21 @@ export const getApprovedApplicants = async (sub_date) => {
       "gl.grade_level_name as grade_level",
     ])
     .where("aa.sub_date", "=", sub_date)
-    .where("aa.approval_status", "=", "approved")
-    .orderBy("aa.from_time", "asc")
-    .execute();
+    .where("aa.approval_status", "=", "approved");
+
+  if (search.trim()) {
+    const searchTerm = `%${search.trim()}%`;
+
+    query = query.where((eb) =>
+      eb.or([
+        eb("a.application_no", "like", searchTerm),
+        eb("ai.first_name", "like", searchTerm),
+        eb("ai.last_name", "like", searchTerm),
+      ]),
+    );
+  }
+
+  return await query.orderBy("aa.from_time", "asc").execute();
 };
 
 export const enrollApplicant = async (data) => {
