@@ -519,11 +519,15 @@ export const getApprovedApplicants = async (
     ])
     .where("aa.sub_date", "=", sub_date)
     .where("aa.approval_status", "=", "approved")
-    .whereNotExists(
-      db
-        .selectFrom("submissions as s")
-        .select("s.submission_id")
-        .whereRef("s.app_approval_id", "=", "aa.app_approval_id"),
+    .where(({ not, exists }) =>
+      not(
+        exists(
+          db
+            .selectFrom("submissions as s")
+            .select("s.submission_id")
+            .whereRef("s.app_approval_id", "=", "aa.app_approval_id"),
+        ),
+      ),
     );
 
   if (search.trim()) {
@@ -556,11 +560,15 @@ export const getApprovedApplicants = async (
     .select(({ fn }) => [fn.countAll().as("total")])
     .where("aa.sub_date", "=", sub_date)
     .where("aa.approval_status", "=", "approved")
-    .whereNotExists(
-      db
-        .selectFrom("submissions as s")
-        .select("s.submission_id")
-        .whereRef("s.app_approval_id", "=", "aa.app_approval_id"),
+    .where(({ not, exists }) =>
+      not(
+        exists(
+          db
+            .selectFrom("submissions as s")
+            .select("s.submission_id")
+            .whereRef("s.app_approval_id", "=", "aa.app_approval_id"),
+        ),
+      ),
     );
 
   if (search.trim()) {
