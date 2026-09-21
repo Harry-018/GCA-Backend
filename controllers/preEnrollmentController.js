@@ -187,3 +187,45 @@ export const enrollApplicant = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const rejectApprovedApplicant = async (req, res) => {
+  try {
+    const result = await pe.rejectApprovedApplicant({
+      app_approval_id: req.params.app_approval_id,
+      rejection_reason_id: req.body.rejection_reason_id,
+    });
+
+    res.status(201).json({
+      message: "Applicant rejected successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Reject approved applicant error:", error);
+
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const rescheduleApprovedApplicant = async (req, res) => {
+  try {
+    const result = await pe.rescheduleApprovedApplicant({
+      app_approval_id: req.params.app_approval_id,
+      sub_date: req.body.sub_date,
+      from_time: req.body.from_time,
+      to_time: req.body.to_time,
+    });
+
+    res.status(200).json({
+      message: "Applicant rescheduled successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Reschedule approved applicant error:", error);
+
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};

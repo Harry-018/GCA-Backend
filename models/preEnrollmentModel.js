@@ -650,3 +650,43 @@ export const enrollApplicant = async (data) => {
     };
   });
 };
+
+export const rejectApprovedApplicant = async (data) => {
+  const result = await db
+    .insertInto("submissions")
+    .values({
+      app_approval_id: data.app_approval_id,
+      sub_status: "rejected",
+      rejection_reason_id: data.rejection_reason_id,
+    })
+    .executeTakeFirst();
+
+  return {
+    submission_id: Number(result.insertId),
+    app_approval_id: data.app_approval_id,
+  };
+};
+
+export const rescheduleApprovedApplicant = async (data) => {
+  const result = await db
+    .updateTable("app_approval")
+    .set({
+      sub_date: data.sub_date,
+      from_time: data.from_time,
+      to_time: data.to_time,
+    })
+    .where("app_approval_id", "=", data.app_approval_id)
+    .where("approval_status", "=", "approved")
+    .executeTakeFirst();
+
+  if (Number(result.numUpdatedRows) !== 1) {
+    throw new Error("Approved application does not exist.");
+  }
+
+  return {
+    app_approval_id: data.app_approval_id,
+    sub_date: data.sub_date,
+    from_time: data.from_time,
+    to_time: data.to_time,
+  };
+};

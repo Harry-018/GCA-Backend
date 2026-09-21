@@ -10,6 +10,8 @@ import {
   rejectApplicant,
   getApprovedApplicants,
   enrollApplicant,
+  rejectApprovedApplicant,
+  rescheduleApprovedApplicant,
 } from "../controllers/preEnrollmentController.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 const router = express.Router();
@@ -65,3 +67,16 @@ router.post(
   enrollApplicant,
 );
 export default router;
+
+router.post(
+  "/app-approval/:app_approval_id/reject",
+  authenticate,
+  authorize("admin"),
+  rejectApprovedApplicant,
+);
+router.patch(
+  "/app-approval/:app_approval_id",
+  authenticate,
+  authorize("admin"),
+  rescheduleApprovedApplicant,
+);
