@@ -2,11 +2,20 @@ import * as am from "../models/academicModel.js";
 
 export const getSchoolYears = async (req, res) => {
   try {
-    const schoolYears = await am.getSchoolYears();
+    const { status = "all", search = "", page = 1, limit = 10 } = req.query;
 
-    res.status(200).json({ data: schoolYears });
+    const result = await am.getSchoolYears({
+      status,
+      search,
+      page: Number(page),
+      limit: Number(limit),
+    });
+
+    res.status(200).json(result);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
 

@@ -1,11 +1,77 @@
 import db from "../config/db.js";
 
-export const getSchoolYears = async () => {
-  return await db
+import { sql } from "kysely";
+
+export const getSchoolYears = async ({
+  status = "all",
+  search = "",
+  page = 1,
+  limit = 10,
+}) => {
+  const offset = (page - 1) * limit;
+
+  let query = db.selectFrom("school_years").selectAll();
+
+  // Status filter
+  if (status !== "all") {
+    query = query.where("sy_status", "=", status);
+  }
+
+  // Search
+  if (search.trim() !== "") {
+    const term = `%${search.trim()}%`;
+
+    query = query.where((eb) =>
+      eb.or([
+        eb("start_date", "like", term),
+        eb("end_date", "like", term),
+        eb("sy_status", "like", term),
+        eb("enrollment_status", "like", term),
+      ]),
+    );
+  }
+
+  // Newest school year first
+  query = query.orderBy("start_date", "desc").limit(limit).offset(offset);
+
+  const schoolYears = await query.execute();
+
+  // Total records for pagination
+  let countQuery = db
     .selectFrom("school_years")
-    .selectAll()
-    .orderBy("start_date", "desc")
-    .execute();
+    .select(sql`count(*)`.as("total"));
+
+  if (status !== "all") {
+    countQuery = countQuery.where("sy_status", "=", status);
+  }
+
+  if (search.trim() !== "") {
+    const term = `%${search.trim()}%`;
+
+    countQuery = countQuery.where((eb) =>
+      eb.or([
+        eb("start_date", "like", term),
+        eb("end_date", "like", term),
+        eb("sy_status", "like", term),
+        eb("enrollment_status", "like", term),
+      ]),
+    );
+  }
+
+  const countResult = await countQuery.executeTakeFirst();
+
+  const total = Number(countResult.total);
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data: schoolYears,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+    },
+  };
 };
 
 export const getSchoolYearInfo = async (school_year_id) => {
