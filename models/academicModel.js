@@ -43,6 +43,7 @@ export const editSchoolYear = async (school_year_id, data) => {
         .where("school_year_id", "!=", school_year_id)
         .execute();
     }
+
     const result = await trx
       .updateTable("school_years")
       .set({
@@ -53,6 +54,14 @@ export const editSchoolYear = async (school_year_id, data) => {
       })
       .where("school_year_id", "=", school_year_id)
       .executeTakeFirst();
+
+    if (Number(result.numUpdatedRows) !== 1) {
+      throw new Error("School year not found.");
+    }
+
+    return {
+      school_year_id: Number(school_year_id),
+    };
   });
 };
 
@@ -156,7 +165,9 @@ export const removeGradeLevelFromSchoolYear = async (data) => {
       .execute();
 
     if (checkAppUsage.length !== 0) {
-      return { message: "cannot be removed. grade level is being used" };
+      throw new Error(
+        "Grade level cannot be removed because it is already being used.",
+      );
     }
 
     await trx
@@ -164,11 +175,5 @@ export const removeGradeLevelFromSchoolYear = async (data) => {
       .where("grade_level_id", "=", data.grade_level_id)
       .where("school_year_id", "=", activeSchoolYearId)
       .execute();
-
-    return {
-      message: "Grade level removed for this school year.",
-    };
   });
 };
-
-//check for bugs on add and remove gl to sy
