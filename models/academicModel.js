@@ -174,10 +174,10 @@ export const getGradelevelsInSchoolyear = async () => {
     .selectFrom("schoolyears_gradelevels as sgl")
     .innerJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
     .innerJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
-    .leftJoin(
-      "schoolyears_gradelevels_subjects as sgls",
-      "sgl.sy_grade_level_id",
-      "sgls.sy_grade_level_id",
+    .leftJoin("schoolyears_gradelevels_subjects as sgls", (join) =>
+      join
+        .onRef("sgl.sy_grade_level_id", "=", "sgls.sy_grade_level_id")
+        .on("sgls.sy_gradelevel_subject_status", "=", "active"),
     )
     .select([
       "gl.grade_level_id",
