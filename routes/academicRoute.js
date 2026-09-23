@@ -38,7 +38,7 @@ router.patch(
 );
 
 // gradelvels
-router.get("/grade-level", authenticate, authorize, getGradeLevels);
+router.get("/grade-level", authenticate, authorize("admin"), getGradeLevels);
 
 router.get(
   "/grade-level/:grade_level_id",
@@ -82,21 +82,21 @@ router.patch(
 router.get(
   "/grade-level/:sy_grade_level_id/subjects",
   authenticate,
-  authorize,
+  authorize("admin"),
   getSubjectsInGradeLevel,
 );
 
 router.post(
   "/grade-level/subjects",
   authenticate,
-  authorize,
+  authorize("admin"),
   addSubjectToGradeLevel,
 );
 
 router.patch(
   "/grade-level/subjects/:sy_gradelevel_subject_id",
   authenticate,
-  authorize,
+  authorize("admin"),
   removeSubjectFromGradeLevel,
 );
 export default router;
