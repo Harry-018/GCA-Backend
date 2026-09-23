@@ -59,8 +59,11 @@ export const editSchoolYear = async (req, res) => {
 
 //grade levels
 export const getGradeLevels = async (req, res) => {
+  console.log("GET GRADE LEVELS CONTROLLER REACHED");
+
   try {
     const gradeLevel = await am.getGradeLevels();
+    console.log("GRADE LEVEL MODEL FINISHED");
 
     res.status(200).json({ data: gradeLevel });
   } catch (error) {
