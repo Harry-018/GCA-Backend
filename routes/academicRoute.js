@@ -11,6 +11,9 @@ import {
   getAvailableGradelevels,
   addGradelevelsToSchoolYears,
   removeGradeLevelFromSchoolYear,
+  getSubjectsInGradeLevel,
+  addSubjectToGradeLevel,
+  removeSubjectFromGradeLevel,
 } from "../controllers/academicController.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
@@ -34,7 +37,8 @@ router.patch(
   editSchoolYear,
 );
 
-router.get("/grade-level", getGradeLevels);
+// gradelvels
+router.get("/grade-level", authenticate, authorize, getGradeLevels);
 
 router.get(
   "/grade-level/:grade_level_id",
@@ -52,6 +56,7 @@ router.patch(
   editGradeLevel,
 );
 
+// gradelevel schoolyear
 router.get(
   "/gradelevel-schoolyear",
   authenticate,
@@ -66,11 +71,32 @@ router.post(
   addGradelevelsToSchoolYears,
 );
 
-router.delete(
+router.patch(
   "/gradelevel-schoolyear",
   authenticate,
   authorize("admin"),
   removeGradeLevelFromSchoolYear,
 );
 
+// subject grade level
+router.get(
+  "/grade-level/:sy_grade_level_id/subjects",
+  authenticate,
+  authorize,
+  getSubjectsInGradeLevel,
+);
+
+router.post(
+  "/grade-level/subjects",
+  authenticate,
+  authorize,
+  addSubjectToGradeLevel,
+);
+
+router.patch(
+  "/grade-level/subjects/:sy_gradelevel_subject_id",
+  authenticate,
+  authorize,
+  removeSubjectFromGradeLevel,
+);
 export default router;

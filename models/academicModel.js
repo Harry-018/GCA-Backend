@@ -131,6 +131,8 @@ export const editSchoolYear = async (school_year_id, data) => {
   });
 };
 
+//grade levels
+
 export const getGradeLevels = async () => {
   return await db.selectFrom("grade_levels").selectAll().execute();
 };
@@ -168,44 +170,86 @@ export const editGradeLevel = async (grade_level_id, data) => {
 
 /* sy_gradelevels*/
 export const getGradelevelsInSchoolyear = async () => {
-  const availableGradeLevels = await db
+  return await db
     .selectFrom("schoolyears_gradelevels as sgl")
-
     .innerJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
-
     .innerJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
-
-    .select(["gl.grade_level_id", "gl.grade_level_name"])
-
+    .leftJoin(
+      "schoolyears_gradelevels_subjects as sgls",
+      "sgl.sy_grade_level_id",
+      "sgls.sy_grade_level_id",
+    )
+    .select([
+      "gl.grade_level_id",
+      "gl.grade_level_name",
+      "sgl.sy_grade_level_id",
+    ])
+    .select(({ fn }) => [
+      fn.count("sgls.sy_gradelevel_subject_id").as("subject_count"),
+    ])
     .where("sy.sy_status", "=", "active")
+    .where("sgl.sy_gradelevel_status", "=", "active")
+    .groupBy([
+      "gl.grade_level_id",
+      "gl.grade_level_name",
+      "sgl.sy_grade_level_id",
+    ])
     .execute();
-
-  return availableGradeLevels;
 };
 
 export const addGradelevelsToSchoolYears = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const activeSY = await trx
       .selectFrom("school_years")
-      .selectAll()
+      .select("school_year_id")
       .where("sy_status", "=", "active")
       .executeTakeFirst();
 
     if (!activeSY) {
       throw new Error("No active school year found.");
     }
+
     const activeSY_id = Number(activeSY.school_year_id);
 
+    // Check if the grade level already exists in the active school year
+    const existing = await trx
+      .selectFrom("schoolyears_gradelevels")
+      .select(["sy_grade_level_id", "sy_gradelevel_status"])
+      .where("school_year_id", "=", activeSY_id)
+      .where("grade_level_id", "=", data.grade_level_id)
+      .executeTakeFirst();
+
+    // Grade level already exists
+    if (existing) {
+      // Reactivate if archived
+      if (existing.sy_gradelevel_status === "archived") {
+        await trx
+          .updateTable("schoolyears_gradelevels")
+          .set({
+            sy_gradelevel_status: "active",
+          })
+          .where("sy_grade_level_id", "=", existing.sy_grade_level_id)
+          .executeTakeFirst();
+      }
+
+      return {
+        sy_gradelevel_id: Number(existing.sy_grade_level_id),
+      };
+    }
+
+    // Grade level does not exist yet
     const result = await trx
       .insertInto("schoolyears_gradelevels")
       .values({
         school_year_id: activeSY_id,
         grade_level_id: data.grade_level_id,
-        sy_gradelevel_status: data.sy_gradelevel_status,
+        sy_gradelevel_status: "active",
       })
-      .execute();
+      .executeTakeFirst();
 
-    return { sy_gradelevel_id: Number(result.insertId) };
+    return {
+      sy_gradelevel_id: Number(result.insertId),
+    };
   });
 };
 
@@ -236,10 +280,98 @@ export const removeGradeLevelFromSchoolYear = async (data) => {
       );
     }
 
-    await trx
-      .deleteFrom("schoolyears_gradelevels")
+    const gradeLevel = await trx
+      .selectFrom("schoolyears_gradelevels")
+      .select("sy_grade_level_id")
       .where("grade_level_id", "=", data.grade_level_id)
       .where("school_year_id", "=", activeSchoolYearId)
-      .execute();
+      .where("sy_gradelevel_status", "=", "active")
+      .executeTakeFirst();
+
+    if (!gradeLevel) {
+      throw new Error("Grade level is not assigned to the active school year.");
+    }
+
+    await trx
+      .updateTable("schoolyears_gradelevels")
+      .set({
+        sy_gradelevel_status: "archived",
+      })
+      .where("sy_grade_level_id", "=", gradeLevel.sy_grade_level_id)
+      .executeTakeFirst();
+
+    return {
+      sy_grade_level_id: Number(gradeLevel.sy_grade_level_id),
+    };
   });
+};
+
+//subjects in grade level
+export const getSubjectsInGradeLevel = async (sy_grade_level_id) => {
+  return await db
+    .selectFrom("schoolyears_gradelevels_subjects as sgls")
+    .innerJoin("subjects as s", "sgls.subject_id", "s.subject_id")
+    .select(["sgls.sy_gradelevel_subject_id", "s.subject_id", "s.subject_name"])
+    .where("sgls.sy_grade_level_id", "=", sy_grade_level_id)
+    .where("sgls.sy_gradelevel_subject_status", "=", "active")
+    .execute();
+};
+
+export const addSubjectToGradeLevel = async (data) => {
+  const existing = await db
+    .selectFrom("schoolyears_gradelevels_subjects")
+    .select(["sy_gradelevel_subject_id", "sy_gradelevel_subject_status"])
+    .where("sy_grade_level_id", "=", data.sy_grade_level_id)
+    .where("subject_id", "=", data.subject_id)
+    .executeTakeFirst();
+
+  // Assignment already exists
+  if (existing) {
+    // Reactivate if archived
+    if (existing.sy_gradelevel_subject_status === "archived") {
+      await db
+        .updateTable("schoolyears_gradelevels_subjects")
+        .set({
+          sy_gradelevel_subject_status: "active",
+        })
+        .where(
+          "sy_gradelevel_subject_id",
+          "=",
+          existing.sy_gradelevel_subject_id,
+        )
+        .executeTakeFirst();
+    }
+
+    return {
+      sy_gradelevel_subject_id: Number(existing.sy_gradelevel_subject_id),
+    };
+  }
+
+  // No existing assignment, create a new one
+  const result = await db
+    .insertInto("schoolyears_gradelevels_subjects")
+    .values({
+      sy_grade_level_id: data.sy_grade_level_id,
+      subject_id: data.subject_id,
+      sy_gradelevel_subject_status: "active",
+    })
+    .executeTakeFirst();
+
+  return {
+    sy_gradelevel_subject_id: Number(result.insertId),
+  };
+};
+
+export const removeSubjectFromGradeLevel = async (sy_gradelevel_subject_id) => {
+  await db
+    .updateTable("schoolyears_gradelevels_subjects")
+    .set({
+      sy_gradelevel_subject_status: "archived",
+    })
+    .where("sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
+    .executeTakeFirst();
+
+  return {
+    sy_gradelevel_subject_id: Number(sy_gradelevel_subject_id),
+  };
 };

@@ -57,6 +57,7 @@ export const editSchoolYear = async (req, res) => {
   }
 };
 
+//grade levels
 export const getGradeLevels = async (req, res) => {
   try {
     const gradeLevel = await am.getGradeLevels();
@@ -70,6 +71,7 @@ export const getGradeLevels = async (req, res) => {
 export const getGradeLevelInfo = async (req, res) => {
   try {
     const gradeLevelInfo = await am.getGradeLevel(req.params.grade_level_id);
+
     res.status(200).json({ data: gradeLevelInfo });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -80,9 +82,10 @@ export const createGradeLevel = async (req, res) => {
   try {
     const gradeLevel = await am.createGradeLevel(req.body);
 
-    res
-      .status(201)
-      .json({ message: "Successfully Created Grade Level", data: gradeLevel });
+    res.status(201).json({
+      message: "Successfully Created Grade Level",
+      data: gradeLevel,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -95,15 +98,17 @@ export const editGradeLevel = async (req, res) => {
       req.body,
     );
 
-    res
-      .status(200)
-      .json({ message: "Successfully Edited Grade Level", data: gradelevel });
+    res.status(200).json({
+      message: "Successfully Edited Grade Level",
+      data: gradelevel,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-//gl-sy
+// gl-sy
+
 export const getAvailableGradelevels = async (req, res) => {
   try {
     const availableGradeLevels = await am.getGradelevelsInSchoolyear();
@@ -134,6 +139,48 @@ export const removeGradeLevelFromSchoolYear = async (req, res) => {
     res.status(200).json({
       message: "Successfully removed grade level from school year",
       data: gradelevel,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// subjects in grade level
+
+export const getSubjectsInGradeLevel = async (req, res) => {
+  try {
+    const subjects = await am.getSubjectsInGradeLevel(
+      req.params.sy_grade_level_id,
+    );
+
+    res.status(200).json({ data: subjects });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const addSubjectToGradeLevel = async (req, res) => {
+  try {
+    const subject = await am.addSubjectToGradeLevel(req.body);
+
+    res.status(201).json({
+      message: "Successfully added subject to grade level",
+      data: subject,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const removeSubjectFromGradeLevel = async (req, res) => {
+  try {
+    const subject = await am.removeSubjectFromGradeLevel(
+      req.params.sy_gradelevel_subject_id,
+    );
+
+    res.status(200).json({
+      message: "Successfully removed subject from grade level",
+      data: subject,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
