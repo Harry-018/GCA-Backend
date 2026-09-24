@@ -23,6 +23,7 @@ import {
   // ================
   getSkillsBySubject,
   getSkillsByGradeLevelSubject,
+  getAvailableSkillsByGradeLevelSubject,
   addSkillToSubject,
   assignSkillsToGradeLevelSubject,
   editSkill,
@@ -142,6 +143,13 @@ router.get(
   authenticate,
   authorize("admin"),
   getSkillsByGradeLevelSubject,
+);
+
+router.get(
+  "/grade-level-subject/:sy_gradelevel_subject_id/skills/available",
+  authenticate,
+  authorize("admin"),
+  getAvailableSkillsByGradeLevelSubject,
 );
 
 // Create a new master skill under a subject

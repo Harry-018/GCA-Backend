@@ -303,6 +303,28 @@ export const getSkillsByGradeLevelSubject = async (req, res) => {
   }
 };
 
+export const getAvailableSkillsByGradeLevelSubject = async (req, res) => {
+  try {
+    const { sy_gradelevel_subject_id } = req.params;
+
+    const skills = await am.getAvailableSkillsByGradeLevelSubject(
+      Number(sy_gradelevel_subject_id),
+    );
+
+    res.status(200).json({
+      success: true,
+      data: skills,
+    });
+  } catch (error) {
+    console.error("Error getting available skills:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to get available skills.",
+    });
+  }
+};
+
 // Create a new master skill
 export const addSkillToSubject = async (req, res) => {
   try {
@@ -330,7 +352,7 @@ export const assignSkillsToGradeLevelSubject = async (req, res) => {
   try {
     const { sy_gradelevel_subject_id } = req.params;
     const { skill_ids } = req.body;
-    const result = await sm.assignSkillsToGradeLevelSubject(
+    const result = await am.assignSkillsToGradeLevelSubject(
       Number(sy_gradelevel_subject_id),
       skill_ids,
     );
@@ -341,9 +363,10 @@ export const assignSkillsToGradeLevelSubject = async (req, res) => {
     });
   } catch (error) {
     console.error("Error assigning skills:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to assign skills." });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 

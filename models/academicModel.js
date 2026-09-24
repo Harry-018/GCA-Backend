@@ -481,6 +481,33 @@ export const getSkillsByGradeLevelSubject = async (
   return skills;
 };
 
+export const getAvailableSkillsByGradeLevelSubject = async (
+  sy_gradelevel_subject_id,
+) => {
+  return await db
+    .selectFrom("skill as s")
+    .innerJoin(
+      "schoolyears_gradelevels_subjects as sgs",
+      "sgs.subject_id",
+      "s.subject_id",
+    )
+    .leftJoin("schoolyears_gradelevels_subjects_skills as sgss", (join) =>
+      join
+        .onRef("s.skill_id", "=", "sgss.skill_id")
+        .onRef(
+          "sgss.sy_gradelevel_subject_id",
+          "=",
+          "sgs.sy_gradelevel_subject_id",
+        )
+        .on("sgss.skill_status", "=", "active"),
+    )
+    .select(["s.skill_id", "s.skill_name", "s.description"])
+    .where("sgs.sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
+    .where("sgss.skill_id", "is", null)
+    .orderBy("s.skill_name", "asc")
+    .execute();
+};
+
 //creates masterskill
 export const addSkillToSubject = async (subject_id, data) => {
   const result = await db
@@ -503,54 +530,91 @@ export const assignSkillsToGradeLevelSubject = async (
   const uniqueSkillIds = [
     ...new Set(skill_ids.map((skill_id) => Number(skill_id))),
   ];
+
   return await db.transaction().execute(async (trx) => {
+    // 1. Check that the grade-level subject exists
     const gradeLevelSubject = await trx
       .selectFrom("schoolyears_gradelevels_subjects")
       .select(["subject_id"])
       .where("sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
       .executeTakeFirst();
+
     if (!gradeLevelSubject) {
       throw new Error("Grade-level subject not found.");
     }
+
+    // 2. Make sure all selected skills belong to this subject
     const skills = await trx
       .selectFrom("skill")
       .select(["skill_id"])
       .where("skill_id", "in", uniqueSkillIds)
       .where("subject_id", "=", gradeLevelSubject.subject_id)
       .execute();
+
     if (skills.length !== uniqueSkillIds.length) {
       throw new Error(
         "One or more selected skills do not belong to this subject.",
       );
     }
+
+    // 3. Check existing assignments
     const existingAssignments = await trx
       .selectFrom("schoolyears_gradelevels_subjects_skills")
-      .select(["skill_id"])
+      .select(["sy_gradelevel_subject_skill_id", "skill_id", "skill_status"])
       .where("sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
       .where("skill_id", "in", uniqueSkillIds)
       .execute();
-    const existingSkillIds = new Set(
-      existingAssignments.map((item) => Number(item.skill_id)),
+
+    const existingMap = new Map(
+      existingAssignments.map((item) => [Number(item.skill_id), item]),
     );
-    const newSkillIds = uniqueSkillIds.filter(
-      (skill_id) => !existingSkillIds.has(skill_id),
-    );
-    if (newSkillIds.length === 0) {
-      return {
-        inserted: 0,
-        skill_ids: [],
-        message: "All selected skills are already assigned.",
-      };
+
+    const skillsToInsert = [];
+    const skillsToReactivate = [];
+
+    // 4. Separate new skills from archived skills
+    for (const skill_id of uniqueSkillIds) {
+      const existing = existingMap.get(skill_id);
+
+      if (!existing) {
+        skillsToInsert.push({
+          sy_gradelevel_subject_id,
+          skill_id,
+          skill_status: "active",
+        });
+      } else if (existing.skill_status === "archived") {
+        skillsToReactivate.push(existing.sy_gradelevel_subject_skill_id);
+      }
     }
-    const values = newSkillIds.map((skill_id) => ({
-      sy_gradelevel_subject_id,
-      skill_id,
-    }));
-    await trx
-      .insertInto("schoolyears_gradelevels_subjects_skills")
-      .values(values)
-      .execute();
-    return { inserted: newSkillIds.length, skill_ids: newSkillIds };
+
+    // 5. Reactivate archived assignments
+    if (skillsToReactivate.length > 0) {
+      await trx
+        .updateTable("schoolyears_gradelevels_subjects_skills")
+        .set({
+          skill_status: "active",
+        })
+        .where("sy_gradelevel_subject_skill_id", "in", skillsToReactivate)
+        .execute();
+    }
+
+    // 6. Insert completely new assignments
+    if (skillsToInsert.length > 0) {
+      await trx
+        .insertInto("schoolyears_gradelevels_subjects_skills")
+        .values(skillsToInsert)
+        .execute();
+    }
+
+    return {
+      inserted: skillsToInsert.length,
+      reactivated: skillsToReactivate.length,
+      skipped:
+        uniqueSkillIds.length -
+        skillsToInsert.length -
+        skillsToReactivate.length,
+      skill_ids: skillsToInsert.map((item) => item.skill_id),
+    };
   });
 };
 
