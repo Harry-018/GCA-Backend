@@ -356,49 +356,82 @@ export const getSubjectsInGradeLevel = async (sy_grade_level_id) => {
     .execute();
 };
 
-export const addSubjectToGradeLevel = async (data) => {
-  const existing = await db
-    .selectFrom("schoolyears_gradelevels_subjects")
-    .select(["sy_gradelevel_subject_id", "sy_gradelevel_subject_status"])
-    .where("sy_grade_level_id", "=", data.sy_grade_level_id)
-    .where("subject_id", "=", data.subject_id)
-    .executeTakeFirst();
+export const addSubjectsToGradeLevel = async (data) => {
+  const sy_grade_level_id = Number(data.sy_grade_level_id);
 
-  // Assignment already exists
-  if (existing) {
-    // Reactivate if archived
-    if (existing.sy_gradelevel_subject_status === "archived") {
-      await db
+  const subject_ids = [
+    ...new Set(data.subject_ids.map((subject_id) => Number(subject_id))),
+  ];
+
+  return await db.transaction().execute(async (trx) => {
+    // Get existing subject assignments for this grade level
+    const existingAssignments = await trx
+      .selectFrom("schoolyears_gradelevels_subjects")
+      .select([
+        "sy_gradelevel_subject_id",
+        "subject_id",
+        "sy_gradelevel_subject_status",
+      ])
+      .where("sy_grade_level_id", "=", sy_grade_level_id)
+      .where("subject_id", "in", subject_ids)
+      .execute();
+
+    const existingMap = new Map(
+      existingAssignments.map((item) => [Number(item.subject_id), item]),
+    );
+
+    const subjectsToInsert = [];
+    const subjectsToReactivate = [];
+
+    for (const subject_id of subject_ids) {
+      const existing = existingMap.get(subject_id);
+
+      if (!existing) {
+        // Never assigned before
+        subjectsToInsert.push({
+          sy_grade_level_id,
+          subject_id,
+          sy_gradelevel_subject_status: "active",
+        });
+      } else if (existing.sy_gradelevel_subject_status === "archived") {
+        // Previously assigned but archived
+        subjectsToReactivate.push(existing.sy_gradelevel_subject_id);
+      }
+
+      // If already active, do nothing
+    }
+
+    // Reactivate archived assignments
+    if (subjectsToReactivate.length > 0) {
+      await trx
         .updateTable("schoolyears_gradelevels_subjects")
         .set({
           sy_gradelevel_subject_status: "active",
         })
-        .where(
-          "sy_gradelevel_subject_id",
-          "=",
-          existing.sy_gradelevel_subject_id,
-        )
-        .executeTakeFirst();
+        .where("sy_gradelevel_subject_id", "in", subjectsToReactivate)
+        .execute();
+    }
+
+    // Insert completely new assignments
+    let inserted = [];
+
+    if (subjectsToInsert.length > 0) {
+      const result = await trx
+        .insertInto("schoolyears_gradelevels_subjects")
+        .values(subjectsToInsert)
+        .execute();
+
+      inserted = subjectsToInsert.map((item) => item.subject_id);
     }
 
     return {
-      sy_gradelevel_subject_id: Number(existing.sy_gradelevel_subject_id),
+      inserted: inserted.length,
+      reactivated: subjectsToReactivate.length,
+      skipped:
+        subject_ids.length - inserted.length - subjectsToReactivate.length,
+      subject_ids: inserted,
     };
-  }
-
-  // No existing assignment, create a new one
-  const result = await db
-    .insertInto("schoolyears_gradelevels_subjects")
-    .values({
-      sy_grade_level_id: data.sy_grade_level_id,
-      subject_id: data.subject_id,
-      sy_gradelevel_subject_status: "active",
-    })
-    .executeTakeFirst();
-
-  return {
-    sy_gradelevel_subject_id: Number(result.insertId),
-  };
+  });
 };
 
 export const removeSubjectFromGradeLevel = async (sy_gradelevel_subject_id) => {
@@ -413,4 +446,151 @@ export const removeSubjectFromGradeLevel = async (sy_gradelevel_subject_id) => {
   return {
     sy_gradelevel_subject_id: Number(sy_gradelevel_subject_id),
   };
+};
+
+//skills
+
+export const getSkillsBySubject = async (subject_id) => {
+  const skills = await db
+    .selectFrom("skill")
+    .selectAll()
+    .where("subject_id", "=", subject_id)
+    .execute();
+
+  return skills;
+};
+
+export const getSkillsByGradeLevelSubject = async (
+  sy_gradelevel_subject_id,
+) => {
+  const skills = await db
+    .selectFrom("schoolyears_gradelevels_subjects_skills as sgs")
+    .innerJoin("skill as s", "s.skill_id", "sgs.skill_id")
+    .select([
+      "sgs.sy_gradelevel_subject_skill_id",
+      "sgs.skill_id",
+      "s.skill_name",
+      "s.description",
+      "sgs.skill_status",
+    ])
+    .where("sgs.sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
+    .execute();
+
+  return skills;
+};
+
+//creates masterskill
+export const addSkillToSubject = async (subject_id, data) => {
+  const result = await db
+    .insertInto("skill")
+    .values({
+      skill_name: data.skill_name,
+      description: data.description,
+      subject_id,
+    })
+    .executeTakeFirst();
+
+  return result;
+};
+
+//assign skill to subject not create
+export const assignSkillsToGradeLevelSubject = async (
+  sy_gradelevel_subject_id,
+  skill_ids,
+) => {
+  const uniqueSkillIds = [
+    ...new Set(skill_ids.map((skill_id) => Number(skill_id))),
+  ];
+  return await db.transaction().execute(async (trx) => {
+    const gradeLevelSubject = await trx
+      .selectFrom("schoolyears_gradelevels_subjects")
+      .select(["subject_id"])
+      .where("sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
+      .executeTakeFirst();
+    if (!gradeLevelSubject) {
+      throw new Error("Grade-level subject not found.");
+    }
+    const skills = await trx
+      .selectFrom("skill")
+      .select(["skill_id"])
+      .where("skill_id", "in", uniqueSkillIds)
+      .where("subject_id", "=", gradeLevelSubject.subject_id)
+      .execute();
+    if (skills.length !== uniqueSkillIds.length) {
+      throw new Error(
+        "One or more selected skills do not belong to this subject.",
+      );
+    }
+    const existingAssignments = await trx
+      .selectFrom("schoolyears_gradelevels_subjects_skills")
+      .select(["skill_id"])
+      .where("sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
+      .where("skill_id", "in", uniqueSkillIds)
+      .execute();
+    const existingSkillIds = new Set(
+      existingAssignments.map((item) => Number(item.skill_id)),
+    );
+    const newSkillIds = uniqueSkillIds.filter(
+      (skill_id) => !existingSkillIds.has(skill_id),
+    );
+    if (newSkillIds.length === 0) {
+      return {
+        inserted: 0,
+        skill_ids: [],
+        message: "All selected skills are already assigned.",
+      };
+    }
+    const values = newSkillIds.map((skill_id) => ({
+      sy_gradelevel_subject_id,
+      skill_id,
+    }));
+    await trx
+      .insertInto("schoolyears_gradelevels_subjects_skills")
+      .values(values)
+      .execute();
+    return { inserted: newSkillIds.length, skill_ids: newSkillIds };
+  });
+};
+
+//edit master skill
+export const editSkill = async (subject_id, skill_id, data) => {
+  const result = await db
+    .updateTable("skill")
+    .set({
+      skill_name: data.skill_name,
+      description: data.description,
+    })
+    .where("skill_id", "=", skill_id)
+    .where("subject_id", "=", subject_id)
+    .executeTakeFirst();
+
+  return result;
+};
+
+//archive skill not delete
+export const archiveSkill = async (sy_gradelevel_subject_id, skill_id) => {
+  const result = await db
+    .updateTable("schoolyears_gradelevels_subjects_skills")
+    .set({
+      skill_status: "archived",
+    })
+    .where("sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
+    .where("skill_id", "=", skill_id)
+    .executeTakeFirst();
+
+  return result;
+};
+
+//restore skill
+export const restoreSkill = async (sy_gradelevel_subject_id, skill_id) => {
+  const result = await db
+    .updateTable("schoolyears_gradelevels_subjects_skills")
+    .set({
+      skill_status: "active",
+    })
+    .where("sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
+    .where("skill_id", "=", skill_id)
+    .executeTakeFirst();
+
+  return result;
 };

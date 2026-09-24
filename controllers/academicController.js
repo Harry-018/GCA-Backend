@@ -174,7 +174,7 @@ export const removeGradeLevelFromSchoolYear = async (req, res) => {
   }
 };
 
-// subjects in grade level
+// subjects in grade level ==================================================================================
 
 export const getSubjects = async (req, res) => {
   try {
@@ -218,16 +218,28 @@ export const getSubjectsInGradeLevel = async (req, res) => {
   }
 };
 
-export const addSubjectToGradeLevel = async (req, res) => {
+export const addSubjectsToGradeLevel = async (req, res) => {
   try {
-    const subject = await am.addSubjectToGradeLevel(req.body);
+    const { sy_grade_level_id } = req.body;
+    const { subject_ids } = req.body;
+
+    const result = await am.addSubjectsToGradeLevel({
+      sy_grade_level_id: Number(sy_grade_level_id),
+      subject_ids,
+    });
 
     res.status(201).json({
-      message: "Successfully added subject to grade level",
-      data: subject,
+      success: true,
+      message: "Subjects assigned successfully.",
+      data: result,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error assigning subjects:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to assign subjects.",
+    });
   }
 };
 
@@ -243,5 +255,170 @@ export const removeSubjectFromGradeLevel = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// skills subject  ==================================================================================
+
+export const getSkillsBySubject = async (req, res) => {
+  try {
+    const { subject_id } = req.params;
+
+    const skills = await am.getSkillsBySubject(Number(subject_id));
+
+    res.status(200).json({
+      success: true,
+      data: skills,
+    });
+  } catch (error) {
+    console.error("Error getting skills by subject:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to get skills.",
+    });
+  }
+};
+
+// Get skills assigned to a specific grade-level subject
+export const getSkillsByGradeLevelSubject = async (req, res) => {
+  try {
+    const { sy_gradelevel_subject_id } = req.params;
+
+    const skills = await am.getSkillsByGradeLevelSubject(
+      Number(sy_gradelevel_subject_id),
+    );
+
+    res.status(200).json({
+      success: true,
+      data: skills,
+    });
+  } catch (error) {
+    console.error("Error getting skills by grade-level subject:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to get assigned skills.",
+    });
+  }
+};
+
+// Create a new master skill
+export const addSkillToSubject = async (req, res) => {
+  try {
+    const { subject_id } = req.params;
+
+    const skill = await am.addSkillToSubject(Number(subject_id), req.body);
+
+    res.status(201).json({
+      success: true,
+      message: "Skill added successfully.",
+      data: skill,
+    });
+  } catch (error) {
+    console.error("Error adding skill:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to add skill.",
+    });
+  }
+};
+
+// Assign an existing skill to a grade-level subject
+export const assignSkillsToGradeLevelSubject = async (req, res) => {
+  try {
+    const { sy_gradelevel_subject_id } = req.params;
+    const { skill_ids } = req.body;
+    const result = await sm.assignSkillsToGradeLevelSubject(
+      Number(sy_gradelevel_subject_id),
+      skill_ids,
+    );
+    res.status(201).json({
+      success: true,
+      message: "Skills assigned successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error assigning skills:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to assign skills." });
+  }
+};
+
+// Edit a master skill
+export const editSkill = async (req, res) => {
+  try {
+    const { subject_id, skill_id } = req.params;
+
+    const result = await am.editSkill(
+      Number(subject_id),
+      Number(skill_id),
+      req.body,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Skill updated successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error editing skill:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update skill.",
+    });
+  }
+};
+
+// Archive a skill assignment
+export const archiveSkill = async (req, res) => {
+  try {
+    const { sy_gradelevel_subject_id, skill_id } = req.params;
+
+    const result = await am.archiveSkill(
+      Number(sy_gradelevel_subject_id),
+      Number(skill_id),
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Skill archived successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error archiving skill:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to archive skill.",
+    });
+  }
+};
+
+// Restore a skill assignment
+export const restoreSkill = async (req, res) => {
+  try {
+    const { sy_gradelevel_subject_id, skill_id } = req.params;
+
+    const result = await am.restoreSkill(
+      Number(sy_gradelevel_subject_id),
+      Number(skill_id),
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Skill restored successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error restoring skill:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to restore skill.",
+    });
   }
 };

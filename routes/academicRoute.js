@@ -4,19 +4,30 @@ import {
   getSchoolYearInfo,
   createSchoolYear,
   editSchoolYear,
+  // ================
   getGradeLevels,
   getGradeLevelInfo,
   createGradeLevel,
   editGradeLevel,
+  // ================
   getGradeLevelBySchoolYearGradeLevel,
   getAvailableGradelevels,
   addGradelevelsToSchoolYears,
   removeGradeLevelFromSchoolYear,
+  // ================
   getSubjects,
   getSubjectsByGradeLevel,
   getSubjectsInGradeLevel,
-  addSubjectToGradeLevel,
+  addSubjectsToGradeLevel,
   removeSubjectFromGradeLevel,
+  // ================
+  getSkillsBySubject,
+  getSkillsByGradeLevelSubject,
+  addSkillToSubject,
+  assignSkillsToGradeLevelSubject,
+  editSkill,
+  archiveSkill,
+  restoreSkill,
 } from "../controllers/academicController.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
@@ -83,7 +94,7 @@ router.patch(
   removeGradeLevelFromSchoolYear,
 );
 
-// subject grade level
+// subject grade level ==========================================================================================
 
 router.get("/subjects", authenticate, authorize("admin"), getSubjects);
 
@@ -105,7 +116,7 @@ router.post(
   "/grade-level/subjects",
   authenticate,
   authorize("admin"),
-  addSubjectToGradeLevel,
+  addSubjectsToGradeLevel,
 );
 
 router.patch(
@@ -114,4 +125,63 @@ router.patch(
   authorize("admin"),
   removeSubjectFromGradeLevel,
 );
+
+// skills ==========================================================================================
+
+// Get all master skills belonging to a subject
+router.get(
+  "/subject/:subject_id/skills",
+  authenticate,
+  authorize("admin"),
+  getSkillsBySubject,
+);
+
+// Get skills assigned to a specific grade-level subject
+router.get(
+  "/grade-level-subject/:sy_gradelevel_subject_id/skills",
+  authenticate,
+  authorize("admin"),
+  getSkillsByGradeLevelSubject,
+);
+
+// Create a new master skill under a subject
+router.post(
+  "/subject/:subject_id/skills",
+  authenticate,
+  authorize("admin"),
+  addSkillToSubject,
+);
+
+// Assign an existing skill to a grade-level subject
+router.post(
+  "/grade-level-subject/:sy_gradelevel_subject_id/skills",
+  authenticate,
+  authorize("admin"),
+  assignSkillsToGradeLevelSubject,
+);
+
+// Edit a master skill
+router.patch(
+  "/subject/:subject_id/skills/:skill_id",
+  authenticate,
+  authorize("admin"),
+  editSkill,
+);
+
+// Archive a skill assignment
+router.patch(
+  "/grade-level-subject/:sy_gradelevel_subject_id/skills/:skill_id/archive",
+  authenticate,
+  authorize("admin"),
+  archiveSkill,
+);
+
+// Restore a skill assignment
+router.patch(
+  "/grade-level-subject/:sy_gradelevel_subject_id/skills/:skill_id/restore",
+  authenticate,
+  authorize("admin"),
+  restoreSkill,
+);
+
 export default router;
