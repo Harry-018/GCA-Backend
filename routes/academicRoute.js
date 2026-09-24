@@ -39,7 +39,7 @@ router.patch(
 );
 
 // gradelvels
-router.get("/grade-level", authenticate, authorize("admin"), getGradeLevels);
+router.get("/grade-level", getGradeLevels);
 
 router.get(
   "/grade-level/:grade_level_id",
@@ -58,12 +58,7 @@ router.patch(
 );
 
 // gradelevel schoolyear
-router.get(
-  "/gradelevel-schoolyear",
-  authenticate,
-  authorize("admin"),
-  getAvailableGradelevels,
-);
+router.get("/gradelevel-schoolyear", getAvailableGradelevels);
 
 router.post(
   "/gradelevel-schoolyear",
