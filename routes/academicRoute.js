@@ -11,6 +11,7 @@ import {
   getAvailableGradelevels,
   addGradelevelsToSchoolYears,
   removeGradeLevelFromSchoolYear,
+  getSubjects,
   getSubjectsInGradeLevel,
   addSubjectToGradeLevel,
   removeSubjectFromGradeLevel,
@@ -79,6 +80,9 @@ router.patch(
 );
 
 // subject grade level
+
+router.get("/subjects", authenticate, authorize("admin"), getSubjects);
+
 router.get(
   "/grade-level/:sy_grade_level_id/subjects",
   authenticate,

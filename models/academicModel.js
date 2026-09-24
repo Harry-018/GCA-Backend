@@ -307,6 +307,15 @@ export const removeGradeLevelFromSchoolYear = async (data) => {
 };
 
 //subjects in grade level
+
+export const getSubjects = async () => {
+  return await db
+    .selectFrom("subjects")
+    .select(["subject_id", "subject_name"])
+    .orderBy("subject_name", "asc")
+    .execute();
+};
+
 export const getSubjectsInGradeLevel = async (sy_grade_level_id) => {
   return await db
     .selectFrom("schoolyears_gradelevels_subjects as sgls")

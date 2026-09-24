@@ -150,6 +150,20 @@ export const removeGradeLevelFromSchoolYear = async (req, res) => {
 
 // subjects in grade level
 
+export const getSubjects = async (req, res) => {
+  try {
+    const subjects = await am.getSubjects();
+
+    res.status(200).json({
+      data: subjects,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
 export const getSubjectsInGradeLevel = async (req, res) => {
   try {
     const subjects = await am.getSubjectsInGradeLevel(
