@@ -8,6 +8,7 @@ import {
   getGradeLevelInfo,
   createGradeLevel,
   editGradeLevel,
+  getGradeLevelBySchoolYearGradeLevel,
   getAvailableGradelevels,
   addGradelevelsToSchoolYears,
   removeGradeLevelFromSchoolYear,
@@ -60,6 +61,13 @@ router.patch(
 
 // gradelevel schoolyear
 router.get("/gradelevel-schoolyear", getAvailableGradelevels);
+
+router.get(
+  "/schoolyear-gradelevel/:sy_grade_level_id",
+  authenticate,
+  authorize("admin"),
+  getGradeLevelBySchoolYearGradeLevel,
+);
 
 router.post(
   "/gradelevel-schoolyear",

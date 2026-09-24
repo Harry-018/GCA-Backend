@@ -112,6 +112,28 @@ export const editGradeLevel = async (req, res) => {
 
 // gl-sy
 
+export const getGradeLevelBySchoolYearGradeLevel = async (req, res) => {
+  try {
+    const gradeLevel = await am.getGradeLevelBySchoolYearGradeLevel(
+      req.params.sy_grade_level_id,
+    );
+
+    if (!gradeLevel) {
+      return res.status(404).json({
+        message: "Grade level assignment not found.",
+      });
+    }
+
+    res.status(200).json({
+      data: gradeLevel,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
 export const getAvailableGradelevels = async (req, res) => {
   try {
     const availableGradeLevels = await am.getGradelevelsInSchoolyear();

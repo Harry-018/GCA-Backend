@@ -169,6 +169,22 @@ export const editGradeLevel = async (grade_level_id, data) => {
 };
 
 /* sy_gradelevels*/
+export const getGradeLevelBySchoolYearGradeLevel = async (
+  sy_grade_level_id,
+) => {
+  return await db
+    .selectFrom("schoolyears_gradelevels as sgl")
+    .innerJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
+    .select([
+      "sgl.sy_grade_level_id",
+      "sgl.grade_level_id",
+      "gl.grade_level_name",
+    ])
+    .where("sgl.sy_grade_level_id", "=", sy_grade_level_id)
+    .where("sgl.sy_gradelevel_status", "=", "active")
+    .executeTakeFirst();
+};
+
 export const getGradelevelsInSchoolyear = async () => {
   return await db
     .selectFrom("schoolyears_gradelevels as sgl")
