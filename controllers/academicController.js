@@ -193,7 +193,7 @@ export const getSubjects = async (req, res) => {
 export const getSubjectsByGradeLevel = async (req, res) => {
   try {
     const subjects = await am.getSubjectsByGradeLevel(
-      req.params.grade_level_id,
+      req.params.sy_grade_level_id,
     );
 
     res.status(200).json({

@@ -332,12 +332,18 @@ export const getSubjects = async () => {
     .execute();
 };
 
-export const getSubjectsByGradeLevel = async (grade_level_id) => {
+export const getSubjectsByGradeLevel = async (sy_grade_level_id) => {
   return await db
-    .selectFrom("subjects")
-    .select(["subject_id", "subject_name"])
-    .where("grade_level_id", "=", grade_level_id)
-    .orderBy("subject_name", "asc")
+    .selectFrom("subjects as s")
+    .leftJoin("schoolyears_gradelevels_subjects as sgls", (join) =>
+      join
+        .onRef("s.subject_id", "=", "sgls.subject_id")
+        .on("sgls.sy_grade_level_id", "=", sy_grade_level_id)
+        .on("sgls.sy_gradelevel_subject_status", "=", "active"),
+    )
+    .select(["s.subject_id", "s.subject_name"])
+    .where("sgls.subject_id", "is", null)
+    .orderBy("s.subject_name", "asc")
     .execute();
 };
 
@@ -345,14 +351,10 @@ export const getSubjectsInGradeLevel = async (sy_grade_level_id) => {
   return await db
     .selectFrom("schoolyears_gradelevels_subjects as sgls")
     .innerJoin("subjects as s", "sgls.subject_id", "s.subject_id")
-    .select([
-      "sgls.sy_gradelevel_subject_id",
-      "s.subject_id",
-      "s.subject_name",
-      "s.grade_level_id",
-    ])
+    .select(["sgls.sy_gradelevel_subject_id", "s.subject_id", "s.subject_name"])
     .where("sgls.sy_grade_level_id", "=", sy_grade_level_id)
     .where("sgls.sy_gradelevel_subject_status", "=", "active")
+    .orderBy("s.subject_name", "asc")
     .execute();
 };
 

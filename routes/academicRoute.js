@@ -99,7 +99,7 @@ router.patch(
 router.get("/subjects", authenticate, authorize("admin"), getSubjects);
 
 router.get(
-  "/grade-level/:grade_level_id/subjects/available",
+  "/grade-level/:sy_grade_level_id/subjects/available",
   authenticate,
   authorize("admin"),
   getSubjectsByGradeLevel,
