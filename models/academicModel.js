@@ -329,7 +329,12 @@ export const getSubjectsInGradeLevel = async (sy_grade_level_id) => {
   return await db
     .selectFrom("schoolyears_gradelevels_subjects as sgls")
     .innerJoin("subjects as s", "sgls.subject_id", "s.subject_id")
-    .select(["sgls.sy_gradelevel_subject_id", "s.subject_id", "s.subject_name"])
+    .select([
+      "sgls.sy_gradelevel_subject_id",
+      "s.subject_id",
+      "s.subject_name",
+      "s.grade_level_id",
+    ])
     .where("sgls.sy_grade_level_id", "=", sy_grade_level_id)
     .where("sgls.sy_gradelevel_subject_status", "=", "active")
     .execute();
