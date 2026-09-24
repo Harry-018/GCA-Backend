@@ -144,10 +144,11 @@ export const removeGradeLevelFromSchoolYear = async (req, res) => {
       data: gradelevel,
     });
   } catch (error) {
-    console.error(
-      "Failed to remove grade level:",
-      error.response?.data || error,
-    );
+    console.error("removeGradeLevelFromSchoolYear:", error);
+
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
 
