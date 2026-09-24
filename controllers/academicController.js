@@ -168,6 +168,22 @@ export const getSubjects = async (req, res) => {
   }
 };
 
+export const getSubjectsByGradeLevel = async (req, res) => {
+  try {
+    const subjects = await am.getSubjectsByGradeLevel(
+      req.params.grade_level_id,
+    );
+
+    res.status(200).json({
+      data: subjects,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
 export const getSubjectsInGradeLevel = async (req, res) => {
   try {
     const subjects = await am.getSubjectsInGradeLevel(

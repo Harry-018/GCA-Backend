@@ -316,6 +316,15 @@ export const getSubjects = async () => {
     .execute();
 };
 
+export const getSubjectsByGradeLevel = async (grade_level_id) => {
+  return await db
+    .selectFrom("subjects")
+    .select(["subject_id", "subject_name"])
+    .where("grade_level_id", "=", grade_level_id)
+    .orderBy("subject_name", "asc")
+    .execute();
+};
+
 export const getSubjectsInGradeLevel = async (sy_grade_level_id) => {
   return await db
     .selectFrom("schoolyears_gradelevels_subjects as sgls")
