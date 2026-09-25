@@ -11,35 +11,41 @@ export const getStudents = async ({
   let query = db
     .selectFrom("students as s")
 
+    // APPLICATION CHAIN
     .innerJoin("submissions as sub", "s.submission_id", "sub.submission_id")
-
     .innerJoin(
       "app_approval as aa",
       "sub.app_approval_id",
       "aa.app_approval_id",
     )
-
     .innerJoin("applications as a", "aa.application_id", "a.application_id")
-
     .innerJoin(
       "applicant_info as ai",
       "a.applicant_info_id",
       "ai.applicant_info_id",
     )
 
+    // PAYMENT OPTION
     .innerJoin(
       "gradelevel_paymentoptions as gpo",
       "a.gradelevel_paymentoption_id",
       "gpo.gradelevel_paymentoption_id",
     )
-
     .innerJoin(
       "payment_option as po",
       "gpo.payment_option_id",
       "po.payment_option_id",
     )
 
-    .innerJoin("grade_levels as gl", "a.grade_level_id", "gl.grade_level_id")
+    // CURRENT ENROLLMENT
+    .leftJoin("enrollment as e", "s.stu_id", "e.stu_id")
+    .leftJoin("sections as sec", "e.section_id", "sec.section_id")
+    .leftJoin(
+      "schoolyears_gradelevels as sgl",
+      "sec.sy_grade_level_id",
+      "sgl.sy_grade_level_id",
+    )
+    .leftJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
 
     .select([
       "s.stu_id",
@@ -56,7 +62,7 @@ export const getStudents = async ({
       "po.option_name",
     ]);
 
-  // STATUS FILTER
+  // STATUS
   if (status && status !== "all") {
     query = query.where("s.stu_status", "=", status);
   }
@@ -77,11 +83,12 @@ export const getStudents = async ({
   }
 
   // COUNT
-  const countResult = await query
+  const countQuery = query
     .clearSelect()
     .clearOrderBy()
-    .select((eb) => eb.fn.count("s.stu_id").as("total"))
-    .executeTakeFirst();
+    .select((eb) => eb.fn.count("s.stu_id").as("total"));
+
+  const countResult = await countQuery.executeTakeFirst();
 
   const total = Number(countResult?.total ?? 0);
 
