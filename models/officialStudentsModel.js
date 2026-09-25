@@ -69,15 +69,25 @@ export const getStudents = async ({
 
   // SEARCH
   if (search.trim()) {
-    const term = `%${search.trim()}%`;
+    const term = `%${search.trim().toLowerCase()}%`;
 
     query = query.where((eb) =>
       eb.or([
-        eb("ai.first_name", "like", term),
-        eb("ai.middle_name", "like", term),
-        eb("ai.last_name", "like", term),
-        eb("s.stu_num", "like", term),
-        eb("s.lrn", "like", term),
+        eb.fn("LOWER", ["ai.first_name"]),
+        "like",
+        term,
+        eb.fn("LOWER", ["ai.middle_name"]),
+        "like",
+        term,
+        eb.fn("LOWER", ["ai.last_name"]),
+        "like",
+        term,
+        eb.fn("LOWER", ["s.stu_num"]),
+        "like",
+        term,
+        eb.fn("LOWER", ["s.lrn"]),
+        "like",
+        term,
       ]),
     );
   }
