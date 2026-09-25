@@ -27,7 +27,7 @@ export const createRegistrationInvitation = async (req, res) => {
 
 export const submitTeacherRegistration = async (req, res) => {
   try {
-    const teacher = await tm.createTeacher(req.body);
+    const teacher = await trm.createTeacher(req.body);
 
     return res.status(201).json({
       message: "Teacher registration submitted successfully.",
@@ -37,7 +37,7 @@ export const submitTeacherRegistration = async (req, res) => {
     console.error("Error submitting teacher registration:", error);
 
     return res.status(500).json({
-      message: error.message,
+      message: "Failed to submit teacher registration.",
     });
   }
 };
