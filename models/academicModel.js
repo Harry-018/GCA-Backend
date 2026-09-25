@@ -656,16 +656,17 @@ export const archiveSkill = async (sy_gradelevel_subject_id, skill_id) => {
 
   return true;
 };
-//restore skill
+
+// Restore a skill assignment
 export const restoreSkill = async (sy_gradelevel_subject_id, skill_id) => {
-  const result = await db
+  await db
     .updateTable("schoolyears_gradelevels_subjects_skills")
     .set({
       skill_status: "active",
     })
     .where("sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
     .where("skill_id", "=", skill_id)
-    .executeTakeFirst();
+    .execute();
 
-  return result;
+  return true;
 };
