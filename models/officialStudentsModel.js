@@ -10,6 +10,8 @@ export const getStudents = async ({
 
   let query = db
     .selectFrom("students as s")
+
+    // APPLICATION CHAIN
     .innerJoin("submissions as sub", "s.submission_id", "sub.submission_id")
     .innerJoin(
       "app_approval as aa",
@@ -22,6 +24,8 @@ export const getStudents = async ({
       "a.applicant_info_id",
       "ai.applicant_info_id",
     )
+
+    // PAYMENT OPTION
     .innerJoin(
       "gradelevel_paymentoptions as gpo",
       "a.gradelevel_paymentoption_id",
@@ -32,8 +36,17 @@ export const getStudents = async ({
       "gpo.payment_option_id",
       "po.payment_option_id",
     )
-    .innerJoin("grade_levels as gl", "a.grade_level_id", "gl.grade_level_id")
-    .innerJoin("school_years as sy", "a.school_year_id", "sy.school_year_id")
+
+    // CURRENT ENROLLMENT
+    .leftJoin("enrollment as e", "s.stu_id", "e.stu_id")
+    .leftJoin("sections as sec", "e.section_id", "sec.section_id")
+    .leftJoin(
+      "schoolyears_gradelevels as sgl",
+      "sec.sy_grade_level_id",
+      "sgl.sy_grade_level_id",
+    )
+    .leftJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
+
     .select([
       "s.stu_id",
       "s.stu_num",
@@ -47,14 +60,9 @@ export const getStudents = async ({
       "gl.grade_level_name",
 
       "po.option_name",
+    ]);
 
-      "sy.school_year_id",
-      "sy.start_date",
-      "sy.end_date",
-    ])
-    .where("sy.sy_status", "=", "active");
-
-  // STATUS FILTER
+  // STATUS
   if (status && status !== "all") {
     query = query.where("s.stu_status", "=", status);
   }
@@ -66,15 +74,15 @@ export const getStudents = async ({
     query = query.where((eb) =>
       eb.or([
         eb("ai.first_name", "like", term),
-        eb("ai.last_name", "like", term),
         eb("ai.middle_name", "like", term),
+        eb("ai.last_name", "like", term),
         eb("s.stu_num", "like", term),
         eb("s.lrn", "like", term),
       ]),
     );
   }
 
-  // TOTAL COUNT
+  // COUNT
   const countQuery = query
     .clearSelect()
     .clearOrderBy()
@@ -84,7 +92,7 @@ export const getStudents = async ({
 
   const total = Number(countResult?.total ?? 0);
 
-  // PAGINATED DATA
+  // DATA
   const students = await query
     .orderBy("ai.last_name", "asc")
     .orderBy("ai.first_name", "asc")
@@ -106,20 +114,8 @@ export const getStudents = async ({
 export const getStudentInfo = async (stu_id) => {
   return await db
     .selectFrom("students as s")
-    .innerJoin("enrollment as e", "s.stu_id", "e.stu_id")
-    .innerJoin("sections as sec", "e.section_id", "sec.section_id")
-    .innerJoin(
-      "schoolyears_gradelevels as sgl",
-      "sec.sy_grade_level_id",
-      "sgl.sy_grade_level_id",
-    )
-    .innerJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
-    .innerJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
-    .innerJoin(
-      "section_names as sn",
-      "sec.section_name_id",
-      "sn.section_name_id",
-    )
+
+    // APPLICATION CHAIN
     .innerJoin("submissions as sub", "s.submission_id", "sub.submission_id")
     .innerJoin(
       "app_approval as aa",
@@ -132,7 +128,11 @@ export const getStudentInfo = async (stu_id) => {
       "a.applicant_info_id",
       "ai.applicant_info_id",
     )
-    .innerJoin("applicant_address as addr", "ai.address_id", "addr.address_id")
+
+    // ADDRESS
+    .leftJoin("applicant_address as addr", "ai.address_id", "addr.address_id")
+
+    // PAYMENT OPTION
     .innerJoin(
       "gradelevel_paymentoptions as gpo",
       "a.gradelevel_paymentoption_id",
@@ -143,18 +143,31 @@ export const getStudentInfo = async (stu_id) => {
       "gpo.payment_option_id",
       "po.payment_option_id",
     )
+
+    // ENROLLMENT
+    .leftJoin("enrollment as e", "s.stu_id", "e.stu_id")
+    .leftJoin("sections as sec", "e.section_id", "sec.section_id")
+    .leftJoin(
+      "schoolyears_gradelevels as sgl",
+      "sec.sy_grade_level_id",
+      "sgl.sy_grade_level_id",
+    )
+    .leftJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
+    .leftJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
+    .leftJoin(
+      "section_names as sn",
+      "sec.section_name_id",
+      "sn.section_name_id",
+    )
+
     .select([
+      // STUDENT
       "s.stu_id",
       "s.stu_num",
       "s.lrn",
       "s.stu_status",
 
-      "addr.province",
-      "addr.city_municipality",
-      "addr.barangay",
-      "addr.house_no",
-      "addr.zipcode",
-
+      // APPLICANT INFORMATION
       "ai.applicant_info_id",
       "ai.first_name",
       "ai.middle_name",
@@ -168,20 +181,33 @@ export const getStudentInfo = async (stu_id) => {
       "ai.disability",
       "ai.address_id",
 
-      "gl.grade_level_name",
-      "sn.section_name",
+      // ADDRESS
+      "addr.province",
+      "addr.city_municipality",
+      "addr.barangay",
+      "addr.house_no",
+      "addr.zipcode",
+
+      // APPLICATION PAYMENT OPTION
       "po.option_name",
 
-      "sy.school_year_id",
-      "sy.start_date",
-      "sy.end_date",
-
+      // CURRENT ENROLLMENT
       "e.enrollment_id",
       "e.enr_status",
       "e.date_enrolled",
+
+      // CURRENT ACADEMIC PLACEMENT
+      "gl.grade_level_name",
+      "sn.section_name",
+
+      // SCHOOL YEAR
+      "sy.school_year_id",
+      "sy.start_date",
+      "sy.end_date",
     ])
+
     .where("s.stu_id", "=", stu_id)
-    .where("sy.sy_status", "=", "active")
+
     .executeTakeFirst();
 };
 
