@@ -17,16 +17,7 @@ const buildParentQuery = () => {
       "ap.application_id",
     )
     .innerJoin("parent_info as p", "ap.parent_info_id", "p.parent_info_id")
-    .innerJoin("enrollment as e", "s.stu_id", "e.stu_id")
-    .innerJoin("sections as sec", "e.section_id", "sec.section_id")
-    .innerJoin(
-      "schoolyears_gradelevels as sgl",
-      "sec.sy_grade_level_id",
-      "sgl.sy_grade_level_id",
-    )
-    .innerJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
-    .where("ap.will_receive_account", "=", true)
-    .where("sy.sy_status", "=", "active");
+    .where("ap.will_receive_account", "=", true);
 };
 
 export const getParents = async ({ search = "", page = 1, limit = 10 }) => {
@@ -37,7 +28,7 @@ export const getParents = async ({ search = "", page = 1, limit = 10 }) => {
    */
   let query = buildParentQuery()
     .select(["p.parent_info_id", "p.last_name", "p.first_name", "p.email"])
-    .select(sql`COUNT(DISTINCT ${sql.ref("s.stu_id")})`.as("enrolled_children"))
+    .select(sql`COUNT(DISTINCT ${sql.ref("s.stu_id")})`.as("children"))
     .groupBy(["p.parent_info_id", "p.last_name", "p.first_name", "p.email"]);
 
   /*
