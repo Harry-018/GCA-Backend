@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import { sql } from "kysely";
 
 export const getStudents = async ({
   status = "all",
@@ -73,21 +74,11 @@ export const getStudents = async ({
 
     query = query.where((eb) =>
       eb.or([
-        eb.fn("LOWER", ["ai.first_name"]),
-        "like",
-        term,
-        eb.fn("LOWER", ["ai.middle_name"]),
-        "like",
-        term,
-        eb.fn("LOWER", ["ai.last_name"]),
-        "like",
-        term,
-        eb.fn("LOWER", ["s.stu_num"]),
-        "like",
-        term,
-        eb.fn("LOWER", ["s.lrn"]),
-        "like",
-        term,
+        sql`LOWER(${sql.ref("ai.first_name")}) LIKE ${term}`,
+        sql`LOWER(${sql.ref("ai.middle_name")}) LIKE ${term}`,
+        sql`LOWER(${sql.ref("ai.last_name")}) LIKE ${term}`,
+        sql`LOWER(${sql.ref("s.stu_num")}) LIKE ${term}`,
+        sql`LOWER(${sql.ref("s.lrn")}) LIKE ${term}`,
       ]),
     );
   }
