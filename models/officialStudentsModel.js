@@ -1,22 +1,15 @@
 import db from "../config/db.js";
 
-export const getStudents = async (status) => {
+export const getStudents = async ({
+  status = "all",
+  search = "",
+  page = 1,
+  limit = 10,
+}) => {
+  const offset = (page - 1) * limit;
+
   let query = db
     .selectFrom("students as s")
-    .innerJoin("enrollment as e", "s.stu_id", "e.stu_id")
-    .innerJoin("sections as sec", "e.section_id", "sec.section_id")
-    .innerJoin(
-      "schoolyears_gradelevels as sgl",
-      "sec.sy_grade_level_id",
-      "sgl.sy_grade_level_id",
-    )
-    .innerJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
-    .innerJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
-    .innerJoin(
-      "section_names as sn",
-      "sec.section_name_id",
-      "sn.section_name_id",
-    )
     .innerJoin("submissions as sub", "s.submission_id", "sub.submission_id")
     .innerJoin(
       "app_approval as aa",
@@ -29,29 +22,85 @@ export const getStudents = async (status) => {
       "a.applicant_info_id",
       "ai.applicant_info_id",
     )
+    .innerJoin(
+      "gradelevel_paymentoptions as gpo",
+      "a.gradelevel_paymentoption_id",
+      "gpo.gradelevel_paymentoption_id",
+    )
+    .innerJoin(
+      "payment_option as po",
+      "gpo.payment_option_id",
+      "po.payment_option_id",
+    )
+    .innerJoin("grade_levels as gl", "a.grade_level_id", "gl.grade_level_id")
+    .innerJoin("school_years as sy", "a.school_year_id", "sy.school_year_id")
     .select([
       "s.stu_id",
       "s.stu_num",
       "s.lrn",
       "s.stu_status",
+
       "ai.first_name",
       "ai.middle_name",
       "ai.last_name",
+
       "gl.grade_level_name",
-      "sn.section_name",
+
+      "po.option_name",
+
       "sy.school_year_id",
       "sy.start_date",
       "sy.end_date",
-      "e.enr_status",
-      "e.date_enrolled",
     ])
     .where("sy.sy_status", "=", "active");
 
+  // STATUS FILTER
   if (status && status !== "all") {
     query = query.where("s.stu_status", "=", status);
   }
 
-  return await query.execute();
+  // SEARCH
+  if (search.trim()) {
+    const term = `%${search.trim()}%`;
+
+    query = query.where((eb) =>
+      eb.or([
+        eb("ai.first_name", "like", term),
+        eb("ai.last_name", "like", term),
+        eb("ai.middle_name", "like", term),
+        eb("s.stu_num", "like", term),
+        eb("s.lrn", "like", term),
+      ]),
+    );
+  }
+
+  // TOTAL COUNT
+  const countQuery = query
+    .clearSelect()
+    .clearOrderBy()
+    .select((eb) => eb.fn.count("s.stu_id").as("total"));
+
+  const countResult = await countQuery.executeTakeFirst();
+
+  const total = Number(countResult?.total ?? 0);
+
+  // PAGINATED DATA
+  const students = await query
+    .orderBy("ai.last_name", "asc")
+    .orderBy("ai.first_name", "asc")
+    .limit(limit)
+    .offset(offset)
+    .execute();
+
+  return {
+    data: students,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
 export const getStudentInfo = async (stu_id) => {
@@ -83,11 +132,28 @@ export const getStudentInfo = async (stu_id) => {
       "a.applicant_info_id",
       "ai.applicant_info_id",
     )
+    .innerJoin("applicant_address as addr", "ai.address_id", "addr.address_id")
+    .innerJoin(
+      "gradelevel_paymentoptions as gpo",
+      "a.gradelevel_paymentoption_id",
+      "gpo.gradelevel_paymentoption_id",
+    )
+    .innerJoin(
+      "payment_option as po",
+      "gpo.payment_option_id",
+      "po.payment_option_id",
+    )
     .select([
       "s.stu_id",
       "s.stu_num",
       "s.lrn",
       "s.stu_status",
+
+      "addr.province",
+      "addr.city_municipality",
+      "addr.barangay",
+      "addr.house_no",
+      "addr.zipcode",
 
       "ai.applicant_info_id",
       "ai.first_name",
@@ -104,6 +170,7 @@ export const getStudentInfo = async (stu_id) => {
 
       "gl.grade_level_name",
       "sn.section_name",
+      "po.option_name",
 
       "sy.school_year_id",
       "sy.start_date",
@@ -158,10 +225,16 @@ export const getStudentEnrollments = async (stu_id) => {
 };
 
 export const editStudent = async (stu_id, data) => {
+  const allowedStatuses = ["active", "dropout", "transferred"];
+
+  if (!allowedStatuses.includes(data.stu_status)) {
+    throw new Error("Invalid student status.");
+  }
+
   const result = await db
     .updateTable("students")
     .set({
-      lrn: data.lrn,
+      lrn: data.lrn || null,
       stu_status: data.stu_status,
     })
     .where("stu_id", "=", stu_id)
