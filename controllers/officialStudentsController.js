@@ -1,6 +1,7 @@
 import * as sm from "../models/officialStudentsModel.js";
 
 export const getStudents = async (req, res) => {
+  console.log("GET STUDENTS CONTROLLER HIT");
   try {
     const { status = "all", search = "", page = 1, limit = 10 } = req.query;
 
