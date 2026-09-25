@@ -4,6 +4,7 @@ import {
   getStudentInfo,
   getStudentEnrollments,
   editStudent,
+  getParents,
 } from "../controllers/officialStudentsController.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
@@ -21,5 +22,7 @@ router.get(
   authorize("admin"),
   getStudentEnrollments,
 );
+
+router.get("/parents", authenticate, authorize("admin"), getParents);
 
 export default router;
