@@ -1,5 +1,4 @@
-import db from "../config/db";
-
+import db from "../config/db.js";
 import { sql } from "kysely";
 
 export const getTeachers = async ({
