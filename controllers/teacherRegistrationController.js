@@ -27,7 +27,7 @@ export const createRegistrationInvitation = async (req, res) => {
 
 export const submitTeacherRegistration = async (req, res) => {
   try {
-    const teacher = await trm.createTeacher(req.body);
+    const teacher = await trm.submitTeacherRegistration(req.body);
 
     return res.status(201).json({
       message: "Teacher registration submitted successfully.",
