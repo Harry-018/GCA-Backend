@@ -210,6 +210,7 @@ export const getGradelevelsInSchoolyear = async () => {
       "gl.grade_level_name",
       "sgl.sy_grade_level_id",
     ])
+    .orderBy("grade_level_id", "asc")
     .execute();
 };
 
