@@ -1,5 +1,5 @@
 import express from "express";
-import { createRegistrationInvitation } from "../controllers/teacherRegistrationController";
+import { createRegistrationInvitation } from "../controllers/teacherRegistrationController.js";
 
 const router = express.Router();
 
