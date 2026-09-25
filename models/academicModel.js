@@ -532,7 +532,7 @@ export const assignSkillsToGradeLevelSubject = async (
   ];
 
   return await db.transaction().execute(async (trx) => {
-    // 1. Check that the grade-level subject exists
+    // 1. Make sure the grade-level subject exists
     const gradeLevelSubject = await trx
       .selectFrom("schoolyears_gradelevels_subjects")
       .select(["subject_id"])
@@ -543,7 +543,7 @@ export const assignSkillsToGradeLevelSubject = async (
       throw new Error("Grade-level subject not found.");
     }
 
-    // 2. Make sure all selected skills belong to this subject
+    // 2. Make sure all selected skills belong to this master subject
     const skills = await trx
       .selectFrom("skill")
       .select(["skill_id"])
@@ -557,63 +557,74 @@ export const assignSkillsToGradeLevelSubject = async (
       );
     }
 
-    // 3. Check existing assignments
+    // 3. Find existing assignments
     const existingAssignments = await trx
       .selectFrom("schoolyears_gradelevels_subjects_skills")
-      .select(["sy_gradelevel_subject_skill_id", "skill_id", "skill_status"])
+      .select(["skill_id", "skill_status"])
       .where("sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
       .where("skill_id", "in", uniqueSkillIds)
       .execute();
 
     const existingMap = new Map(
-      existingAssignments.map((item) => [Number(item.skill_id), item]),
+      existingAssignments.map((item) => [
+        Number(item.skill_id),
+        item.skill_status,
+      ]),
     );
 
     const skillsToInsert = [];
-    const skillsToReactivate = [];
+    const skillsToRestore = [];
+    const skillsToSkip = [];
 
-    // 4. Separate new skills from archived skills
+    // 4. Determine what to do with each selected skill
     for (const skill_id of uniqueSkillIds) {
-      const existing = existingMap.get(skill_id);
+      const existingStatus = existingMap.get(skill_id);
 
-      if (!existing) {
-        skillsToInsert.push({
-          sy_gradelevel_subject_id,
-          skill_id,
-          skill_status: "active",
-        });
-      } else if (existing.skill_status === "archived") {
-        skillsToReactivate.push(existing.sy_gradelevel_subject_skill_id);
+      if (!existingStatus) {
+        // Never assigned before
+        skillsToInsert.push(skill_id);
+      } else if (existingStatus === "archived") {
+        // Previously assigned but archived
+        skillsToRestore.push(skill_id);
+      } else {
+        // Already active
+        skillsToSkip.push(skill_id);
       }
     }
 
-    // 5. Reactivate archived assignments
-    if (skillsToReactivate.length > 0) {
+    // 5. Restore archived assignments
+    if (skillsToRestore.length > 0) {
       await trx
         .updateTable("schoolyears_gradelevels_subjects_skills")
         .set({
           skill_status: "active",
         })
-        .where("sy_gradelevel_subject_skill_id", "in", skillsToReactivate)
+        .where("sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
+        .where("skill_id", "in", skillsToRestore)
         .execute();
     }
 
-    // 6. Insert completely new assignments
+    // 6. Insert skills that were never assigned
     if (skillsToInsert.length > 0) {
+      const values = skillsToInsert.map((skill_id) => ({
+        sy_gradelevel_subject_id,
+        skill_id,
+        skill_status: "active",
+      }));
+
       await trx
         .insertInto("schoolyears_gradelevels_subjects_skills")
-        .values(skillsToInsert)
+        .values(values)
         .execute();
     }
 
     return {
       inserted: skillsToInsert.length,
-      reactivated: skillsToReactivate.length,
-      skipped:
-        uniqueSkillIds.length -
-        skillsToInsert.length -
-        skillsToReactivate.length,
-      skill_ids: skillsToInsert.map((item) => item.skill_id),
+      restored: skillsToRestore.length,
+      skipped: skillsToSkip.length,
+      inserted_skill_ids: skillsToInsert,
+      restored_skill_ids: skillsToRestore,
+      skipped_skill_ids: skillsToSkip,
     };
   });
 };
@@ -633,20 +644,18 @@ export const editSkill = async (subject_id, skill_id, data) => {
   return result;
 };
 
-//archive skill not delete
 export const archiveSkill = async (sy_gradelevel_subject_id, skill_id) => {
-  const result = await db
+  await db
     .updateTable("schoolyears_gradelevels_subjects_skills")
     .set({
       skill_status: "archived",
     })
     .where("sy_gradelevel_subject_id", "=", sy_gradelevel_subject_id)
     .where("skill_id", "=", skill_id)
-    .executeTakeFirst();
+    .execute();
 
-  return result;
+  return true;
 };
-
 //restore skill
 export const restoreSkill = async (sy_gradelevel_subject_id, skill_id) => {
   const result = await db
