@@ -10,6 +10,7 @@ import os from "./routes/officialStudentRoutes.js";
 import pm from "./routes/parentsRoutes.js";
 import tc from "./routes/teacherRoutes.js";
 import tr from "./routes/teacherRegistrationRoutes.js";
+import ai from "./routes/accountInvitationRoutes.js";
 
 dotenv.config();
 
@@ -33,6 +34,8 @@ app.use("/api/official-students", os);
 app.use("/api/parents", pm);
 app.use("/api/teachers", tc);
 app.use("/api/teacher-registration", tr);
+app.use("/api/teacher-registration", tr);
+app.use("/api/account-invitations", ai);
 
 console.log("Routes loaded");
 
