@@ -17,6 +17,7 @@ const buildParentQuery = () => {
       "ap.application_id",
     )
     .innerJoin("parent_info as p", "ap.parent_info_id", "p.parent_info_id")
+    .where("s.stu_status", "=", "active")
     .where("ap.will_receive_account", "=", true);
 };
 
