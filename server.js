@@ -8,6 +8,7 @@ import acad from "./routes/academicRoute.js";
 import po from "./routes/paymentOptionRoute.js";
 import os from "./routes/officialStudentRoutes.js";
 import pm from "./routes/parentsRoutes.js";
+import tc from "./routes/teacherRoutes.js";
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use("/api/academics", acad);
 app.use("/api/payments", po);
 app.use("/api/official-students", os);
 app.use("/api/parents", pm);
+app.use("/api/teachers", tc);
 
 console.log("Routes loaded");
 
