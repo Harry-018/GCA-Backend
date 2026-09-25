@@ -2,12 +2,30 @@ import * as sm from "../models/officialStudentsModel.js";
 
 export const getStudents = async (req, res) => {
   try {
-    const students = await sm.getStudents(req.query.status);
+    const { status = "all", search = "", page = 1, limit = 10 } = req.query;
 
-    res.status(200).json({
-      data: students,
+    const allowedStatuses = ["all", "active", "dropout", "transferred"];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        message: "Invalid student status.",
+      });
+    }
+
+    const currentPage = Math.max(Number(page) || 1, 1);
+    const pageLimit = Math.min(Math.max(Number(limit) || 10, 1), 100);
+
+    const result = await sm.getStudents({
+      status,
+      search,
+      page: currentPage,
+      limit: pageLimit,
     });
+
+    res.status(200).json(result);
   } catch (error) {
+    console.error("Error getting students:", error);
+
     res.status(500).json({
       message: error.message,
     });
