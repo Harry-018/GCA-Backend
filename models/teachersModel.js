@@ -129,7 +129,7 @@ export const getTeacherInfo = async (teacher_id) => {
 
 export const createTeacher = async (data) => {
   return await db.transaction().execute(async (trx) => {
-    // 1. Create address
+    // 1. Create teacher address
     const addressResult = await trx
       .insertInto("teacher_address")
       .values({
@@ -143,16 +143,16 @@ export const createTeacher = async (data) => {
 
     const address_id = Number(addressResult.insertId);
 
-    // 2. Create user account
+    // 2. Create pending user account
     const accountResult = await trx
       .insertInto("user_accounts")
       .values({
         email: data.account_email,
-        password: data.password ?? null,
+        password: null,
         first_name: data.first_name,
         last_name: data.last_name,
         role: "teacher",
-        account_status: data.account_status ?? "pending",
+        account_status: "pending",
         created_at: new Date(),
       })
       .executeTakeFirst();
