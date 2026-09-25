@@ -45,23 +45,6 @@ export const getTeacherInfo = async (req, res) => {
   }
 };
 
-export const createTeacher = async (req, res) => {
-  try {
-    const teacher = await tm.createTeacher(req.body);
-
-    res.status(201).json({
-      message: "Teacher created successfully",
-      data: teacher,
-    });
-  } catch (error) {
-    console.error("Error creating teacher:", error);
-
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
-
 export const updateTeacher = async (req, res) => {
   try {
     const { teacher_id } = req.params;
