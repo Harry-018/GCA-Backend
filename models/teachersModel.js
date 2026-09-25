@@ -202,94 +202,20 @@ export const createTeacher = async (data) => {
 };
 
 export const updateTeacher = async (teacher_id, data) => {
-  return await db.transaction().execute(async (trx) => {
-    // Find existing teacher
-    const teacher = await trx
-      .selectFrom("teachers as t")
-      .innerJoin(
-        "teacher_info as ti",
-        "t.teacher_info_id",
-        "ti.teacher_info_id",
-      )
-      .select([
-        "t.teacher_id",
-        "t.teacher_info_id",
-        "ti.teacher_address_id",
-        "ti.user_id",
-      ])
-      .where("t.teacher_id", "=", teacher_id)
-      .executeTakeFirst();
+  const result = await db
+    .updateTable("teachers")
+    .set({
+      teacher_status: data.teacher_status,
+    })
+    .where("teacher_id", "=", teacher_id)
+    .executeTakeFirst();
 
-    if (!teacher) {
-      return null;
-    }
+  if (Number(result.numUpdatedRows) === 0) {
+    return null;
+  }
 
-    // Update teacher information
-    await trx
-      .updateTable("teacher_info")
-      .set({
-        first_name: data.first_name,
-        last_name: data.last_name,
-        middle_name: data.middle_name ?? null,
-        gender: data.gender,
-        bdate: data.bdate,
-        birthplace: data.birthplace,
-        religion: data.religion,
-        civil_status: data.civil_status,
-        contact_num: data.contact_num ?? null,
-        email: data.email ?? null,
-      })
-      .where("teacher_info_id", "=", teacher.teacher_info_id)
-      .execute();
-
-    // Update address
-    await trx
-      .updateTable("teacher_address")
-      .set({
-        province: data.province,
-        zipcode: data.zipcode,
-        city_municipality: data.city_municipality,
-        house_no: data.house_no,
-        barangay: data.barangay,
-      })
-      .where("address_id", "=", teacher.teacher_address_id)
-      .execute();
-
-    // Update teacher-specific fields
-    await trx
-      .updateTable("teachers")
-      .set({
-        teacher_num: data.teacher_num ?? null,
-        teacher_status: data.teacher_status,
-      })
-      .where("teacher_id", "=", teacher_id)
-      .execute();
-
-    // Update account-level name/email if provided
-    if (data.account_email || data.first_name || data.last_name) {
-      const accountUpdate = {};
-
-      if (data.account_email) {
-        accountUpdate.email = data.account_email;
-      }
-
-      if (data.first_name) {
-        accountUpdate.first_name = data.first_name;
-      }
-
-      if (data.last_name) {
-        accountUpdate.last_name = data.last_name;
-      }
-
-      await trx
-        .updateTable("user_accounts")
-        .set(accountUpdate)
-        .where("user_id", "=", teacher.user_id)
-        .execute();
-    }
-
-    return {
-      teacher_id,
-    };
-  });
+  return {
+    teacher_id,
+    teacher_status: data.teacher_status,
+  };
 };
