@@ -4,22 +4,14 @@ export const getStudents = async (req, res) => {
   try {
     const { status = "all", search = "", page = 1, limit = 10 } = req.query;
 
-    const allowedStatuses = ["all", "active", "dropout", "transferred"];
-
-    if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({
-        message: "Invalid student status.",
-      });
-    }
-
-    const currentPage = Math.max(Number(page) || 1, 1);
-    const pageLimit = Math.min(Math.max(Number(limit) || 10, 1), 100);
+    console.log("SEARCH:", search);
+    console.log("STATUS:", status);
 
     const result = await sm.getStudents({
       status,
       search,
-      page: currentPage,
-      limit: pageLimit,
+      page: Number(page),
+      limit: Number(limit),
     });
 
     res.status(200).json(result);
