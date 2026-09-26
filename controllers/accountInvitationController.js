@@ -1,8 +1,11 @@
 import * as aim from "../models/accountInvitationModel.js";
+import { sendAccountActivationEmail } from "../emails/emailService.js";
 
 export const createAccountInvitation = async (req, res) => {
   try {
     const { user_id } = req.body;
+
+    console.log("STEP 1 - user_id:", user_id);
 
     if (!user_id) {
       return res.status(400).json({
@@ -12,24 +15,31 @@ export const createAccountInvitation = async (req, res) => {
 
     const invitation = await aim.createAccountInvitation(Number(user_id));
 
+    console.log("STEP 2 - invitation created:", invitation);
+
+    await sendAccountActivationEmail({
+      email: invitation.email,
+      token: invitation.token,
+    });
+
+    console.log("STEP 3 - email sent");
+
     return res.status(201).json({
-      message: "Account activation invitation created successfully.",
-      data: invitation,
+      message: "Account activation invitation sent successfully.",
+      data: {
+        invitation_id: invitation.invitation_id,
+        user_id: invitation.user_id,
+        email: invitation.email,
+        expires_at: invitation.expires_at,
+      },
     });
   } catch (error) {
-    console.error("Error creating account invitation:", error);
-
-    if (
-      error.message === "User account not found." ||
-      error.message === "This account is not pending activation."
-    ) {
-      return res.status(400).json({
-        message: error.message,
-      });
-    }
+    console.error("ERROR:", error);
+    console.error("ERROR MESSAGE:", error.message);
+    console.error("ERROR STACK:", error.stack);
 
     return res.status(500).json({
-      message: "Failed to create account activation invitation.",
+      message: error.message,
     });
   }
 };
