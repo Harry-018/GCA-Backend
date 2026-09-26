@@ -30,7 +30,6 @@ app.use("/api/official-students", os);
 app.use("/api/parents", pm);
 app.use("/api/teachers", tc);
 app.use("/api/teacher-registration", tr);
-app.use("/api/teacher-registration", tr);
 app.use("/api/account-invitations", ai);
 
 const PORT = process.env.PORT || 5000;
