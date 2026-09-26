@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import db from "../config/db.js";
+import { teacherNo } from "../functions/NumberGenerator.js";
 
 export const createRegistrationInvitation = async (email) => {
   const token = crypto.randomBytes(32).toString("hex");
@@ -108,7 +109,7 @@ export const submitTeacherRegistration = async (data) => {
       .insertInto("teachers")
       .values({
         teacher_info_id,
-        teacher_num: data.teacher_num ?? null,
+        teacher_num: await teacherNo(trx),
         teacher_status: "active",
       })
       .executeTakeFirst();

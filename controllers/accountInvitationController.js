@@ -5,8 +5,6 @@ export const createAccountInvitation = async (req, res) => {
   try {
     const { user_id } = req.body;
 
-    console.log("STEP 1 - user_id:", user_id);
-
     if (!user_id) {
       return res.status(400).json({
         message: "User ID is required.",
@@ -15,14 +13,23 @@ export const createAccountInvitation = async (req, res) => {
 
     const invitation = await aim.createAccountInvitation(Number(user_id));
 
-    console.log("STEP 2 - invitation created:", invitation);
+    console.log("INVITATION CREATED:", invitation);
 
-    await sendAccountActivationEmail({
-      email: invitation.email,
-      token: invitation.token,
-    });
+    try {
+      await sendAccountActivationEmail({
+        email: invitation.email,
+        token: invitation.token,
+      });
 
-    console.log("STEP 3 - email sent");
+      console.log("EMAIL SENT");
+    } catch (emailError) {
+      console.error("EMAIL ERROR:", emailError);
+
+      return res.status(500).json({
+        message: "Invitation created, but email failed.",
+        error: emailError.message,
+      });
+    }
 
     return res.status(201).json({
       message: "Account activation invitation sent successfully.",
@@ -34,9 +41,7 @@ export const createAccountInvitation = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("ERROR:", error);
-    console.error("ERROR MESSAGE:", error.message);
-    console.error("ERROR STACK:", error.stack);
+    console.error("INVITATION ERROR:", error);
 
     return res.status(500).json({
       message: error.message,

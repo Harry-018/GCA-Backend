@@ -18,12 +18,8 @@ console.log("Starting server...");
 
 const app = express();
 
-console.log("Express created");
-
 app.use(express.json());
 app.use(cors());
-
-console.log("Middleware loaded");
 
 app.use("/api/auth", auth);
 app.use("/api/preEnrollment", pe);
@@ -36,8 +32,6 @@ app.use("/api/teachers", tc);
 app.use("/api/teacher-registration", tr);
 app.use("/api/teacher-registration", tr);
 app.use("/api/account-invitations", ai);
-
-console.log("Routes loaded");
 
 const PORT = process.env.PORT || 5000;
 

@@ -61,7 +61,7 @@ export const applyApplication = async (data) => {
       })
       .executeTakeFirst();
     const info_id = Number(info.insertId);
-    const appNo = ng.applicationNo();
+    const appNo = await ng.applicationNo(trx);
     const activeSY = await trx
       .selectFrom("school_years")
       .select("school_year_id")
@@ -638,7 +638,7 @@ export const enrollApplicant = async (data) => {
       .insertInto("students")
       .values({
         submission_id,
-        stu_num: ng.studentNo(),
+        stu_num: await ng.studentNo(trx),
         lrn: null,
         stu_status: "active",
       })
