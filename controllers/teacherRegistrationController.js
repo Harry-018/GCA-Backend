@@ -42,7 +42,7 @@ export const submitTeacherRegistration = async (req, res) => {
     console.error("Error submitting teacher registration:", error);
 
     return res.status(500).json({
-      message: "Failed to submit teacher registration.",
+      message: error.message,
     });
   }
 };
