@@ -17,6 +17,7 @@ export const getTeachers = async ({
       "ti.teacher_address_id",
       "ta.address_id",
     )
+    .innerJoin("user_accounts as ua", "ti.user_id", "ua.user_id")
     .select([
       "t.teacher_id",
       "t.teacher_num",
@@ -40,6 +41,10 @@ export const getTeachers = async ({
       "ta.city_municipality",
       "ta.house_no",
       "ta.barangay",
+
+      "ua.email",
+      "ua.role",
+      "ua.account_status",
     ]);
 
   if (status && status !== "all") {
