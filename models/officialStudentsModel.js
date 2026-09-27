@@ -191,6 +191,9 @@ export const getStudentInfo = async (stu_id) => {
       "ai.last_name",
       "ai.gender",
       "ai.bdate",
+
+      sql`TIMESTAMPDIFF(YEAR, ai.bdate, CURDATE())`.as("age"),
+
       "ai.birthplace",
       "ai.religion",
       "ai.nationality",
