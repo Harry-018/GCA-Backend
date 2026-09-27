@@ -33,7 +33,6 @@ export const getTeachers = async ({
       "ti.religion",
       "ti.civil_status",
       "ti.contact_num",
-      "ti.email",
 
       "ta.address_id",
       "ta.province",

@@ -11,6 +11,7 @@ import pm from "./routes/parentsRoutes.js";
 import tc from "./routes/teacherRoutes.js";
 import tr from "./routes/teacherRegistrationRoutes.js";
 import ai from "./routes/accountInvitationRoutes.js";
+import secm from "./routes/sectionRoute.js";
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ app.use("/api/parents", pm);
 app.use("/api/teachers", tc);
 app.use("/api/teacher-registration", tr);
 app.use("/api/account-invitations", ai);
+app.use("/api/sections", secm);
 
 const PORT = process.env.PORT || 5000;
 
