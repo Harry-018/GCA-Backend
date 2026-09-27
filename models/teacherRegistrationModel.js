@@ -96,7 +96,7 @@ export const submitTeacherRegistration = async (data) => {
         religion: data.religion,
         civil_status: data.civil_status,
         contact_num: data.contact_num ?? null,
-        email: data.email ?? null,
+        email: invitation.email,
         teacher_address_id: address_id,
         user_id,
       })
