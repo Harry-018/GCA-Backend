@@ -600,6 +600,7 @@ export const getApprovedApplicants = async (
 
 export const enrollApplicant = async (data) => {
   return await db.transaction().execute(async (trx) => {
+    // 1. Check approved application
     const approval = await trx
       .selectFrom("app_approval")
       .selectAll()
@@ -611,6 +612,33 @@ export const enrollApplicant = async (data) => {
       throw new Error("Approved application not found.");
     }
 
+    // 2. Get the application's school year and grade level
+    const application = await trx
+      .selectFrom("applications")
+      .select(["application_id", "school_year_id", "grade_level_id"])
+      .where("application_id", "=", approval.application_id)
+      .executeTakeFirst();
+
+    if (!application) {
+      throw new Error("Application not found.");
+    }
+
+    // 3. Find the matching school-year + grade-level record
+    const syGradeLevel = await trx
+      .selectFrom("schoolyears_gradelevels")
+      .select(["sy_grade_level_id", "school_year_id", "grade_level_id"])
+      .where("school_year_id", "=", application.school_year_id)
+      .where("grade_level_id", "=", application.grade_level_id)
+      .where("sy_gradelevel_status", "=", "active")
+      .executeTakeFirst();
+
+    if (!syGradeLevel) {
+      throw new Error(
+        "Active school year and grade level combination not found.",
+      );
+    }
+
+    // 4. Prevent duplicate submission
     const existingSubmission = await trx
       .selectFrom("submissions")
       .select("submission_id")
@@ -621,6 +649,7 @@ export const enrollApplicant = async (data) => {
       throw new Error("Applicant has already been submitted.");
     }
 
+    // 5. Create submission
     const insertSubmission = await trx
       .insertInto("submissions")
       .values({
@@ -634,19 +663,39 @@ export const enrollApplicant = async (data) => {
 
     const submission_id = Number(insertSubmission.insertId);
 
+    // 6. Create official student
     const officialStudent = await trx
       .insertInto("students")
       .values({
         submission_id,
         stu_num: await ng.studentNo(trx),
         lrn: null,
+        current_grade_level_id: application.grade_level_id,
         stu_status: "active",
       })
       .executeTakeFirst();
 
+    const stu_id = Number(officialStudent.insertId);
+
+    // 7. Create initial enrollment
+    const officialEnrollment = await trx
+      .insertInto("enrollment")
+      .values({
+        sy_grade_level_id: syGradeLevel.sy_grade_level_id,
+        section_id: null,
+        stu_id,
+        enr_status: "enrolled",
+        date_enrolled: new Date(),
+        promoted_by: null,
+      })
+      .executeTakeFirst();
+
+    const enrollment_id = Number(officialEnrollment.insertId);
+
     return {
       submission_id,
-      student_id: Number(officialStudent.insertId),
+      student_id: stu_id,
+      enrollment_id,
     };
   });
 };
