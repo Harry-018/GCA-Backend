@@ -39,14 +39,11 @@ export const getStudents = async ({
     )
 
     // CURRENT ENROLLMENT
-    .leftJoin("enrollment as e", "s.stu_id", "e.stu_id")
-    .leftJoin("sections as sec", "e.section_id", "sec.section_id")
     .leftJoin(
-      "schoolyears_gradelevels as sgl",
-      "sec.sy_grade_level_id",
-      "sgl.sy_grade_level_id",
+      "grade_levels as gl",
+      "s.current_grade_level_id",
+      "gl.grade_level_id",
     )
-    .leftJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
 
     .select([
       "s.stu_id",
@@ -146,15 +143,34 @@ export const getStudentInfo = async (stu_id) => {
     )
 
     // ENROLLMENT
+    // ENROLLMENT
     .leftJoin("enrollment as e", "s.stu_id", "e.stu_id")
+
+    // SECTION
     .leftJoin("sections as sec", "e.section_id", "sec.section_id")
+
+    // ENROLLMENT SCHOOL YEAR + GRADE LEVEL
     .leftJoin(
       "schoolyears_gradelevels as sgl",
-      "sec.sy_grade_level_id",
+      "e.sy_grade_level_id",
       "sgl.sy_grade_level_id",
     )
+
     .leftJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
-    .leftJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
+
+    // CURRENT STUDENT GRADE LEVEL
+    .leftJoin(
+      "grade_levels as current_gl",
+      "s.current_grade_level_id",
+      "current_gl.grade_level_id",
+    )
+
+    // SECTION GRADE LEVEL
+    .leftJoin(
+      "grade_levels as enrollment_gl",
+      "sgl.grade_level_id",
+      "enrollment_gl.grade_level_id",
+    )
     .leftJoin(
       "section_names as sn",
       "sec.section_name_id",
@@ -198,7 +214,11 @@ export const getStudentInfo = async (stu_id) => {
       "e.date_enrolled",
 
       // CURRENT ACADEMIC PLACEMENT
-      "gl.grade_level_name",
+      "current_gl.grade_level_id as current_grade_level_id",
+      "current_gl.grade_level_name as current_grade_level_name",
+
+      "enrollment_gl.grade_level_id as enrollment_grade_level_id",
+      "enrollment_gl.grade_level_name as enrollment_grade_level_name",
       "sn.section_name",
 
       // SCHOOL YEAR
@@ -215,24 +235,35 @@ export const getStudentInfo = async (stu_id) => {
 export const getStudentEnrollments = async (stu_id) => {
   return await db
     .selectFrom("enrollment as e")
-    .innerJoin("sections as sec", "e.section_id", "sec.section_id")
+
+    // SCHOOL YEAR + GRADE LEVEL
     .innerJoin(
       "schoolyears_gradelevels as sgl",
-      "sec.sy_grade_level_id",
+      "e.sy_grade_level_id",
       "sgl.sy_grade_level_id",
     )
+
     .innerJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
+
     .innerJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
-    .innerJoin(
+
+    // SECTION IS OPTIONAL
+    .leftJoin("sections as sec", "e.section_id", "sec.section_id")
+
+    .leftJoin(
       "section_names as sn",
       "sec.section_name_id",
       "sn.section_name_id",
     )
+
     .select([
       "e.enrollment_id",
       "e.stu_id",
       "e.enr_status",
       "e.date_enrolled",
+      "e.promoted_by",
+
+      "e.sy_grade_level_id",
 
       "sec.section_id",
       "sn.section_name",
@@ -243,10 +274,10 @@ export const getStudentEnrollments = async (stu_id) => {
       "sy.school_year_id",
       "sy.start_date",
       "sy.end_date",
-
-      "e.promoted_by",
     ])
+
     .where("e.stu_id", "=", stu_id)
+
     .orderBy("sy.start_date", "desc")
     .execute();
 };
