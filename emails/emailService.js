@@ -45,6 +45,34 @@ export const sendApplicationApproval = async ({
   });
 };
 
+export const sendTeacherRegistrationEmail = async ({ email, token }) => {
+  const registrationUrl = `${process.env.FRONTEND_URL}/teacher-registration?token=${token}`;
+
+  await brevo.transactionalEmails.sendTransacEmail({
+    subject: "Teacher Registration - Grace Christian Academy",
+
+    textContent: `Hello,
+You have been invited to register as a teacher at Grace Christian Academy.
+
+Please use the link below to complete your teacher information:
+
+${registrationUrl}
+
+This registration link will expire in 24 hours and can only be used once.
+If you did not expect this invitation, you may safely ignore this email.
+
+Grace Christian Academy`,
+
+    sender,
+
+    to: [
+      {
+        email,
+      },
+    ],
+  });
+};
+
 export const sendAccountActivationEmail = async ({ email, token }) => {
   const activationUrl = `${process.env.FRONTEND_URL}/account-activation?token=${token}`;
 

@@ -1,3 +1,4 @@
+import { sendTeacherRegistrationEmail } from "../emails/emailService.js";
 import * as trm from "../models/teacherRegistrationModel.js";
 
 export const createRegistrationInvitation = async (req, res) => {
@@ -12,9 +13,13 @@ export const createRegistrationInvitation = async (req, res) => {
 
     const invitation = await trm.createRegistrationInvitation(email);
 
-    res.status(201).json({
-      message: "Teacher registration invitation created successfully.",
-      data: invitation,
+    await sendTeacherRegistrationEmail({
+      email: invitation.email,
+      token: invitation.token,
+    });
+
+    return res.status(201).json({
+      message: "Teacher registration invitation sent successfully.",
     });
   } catch (error) {
     console.error("Error creating teacher registration invitation:", error);
