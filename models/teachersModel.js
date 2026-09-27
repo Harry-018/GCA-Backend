@@ -42,7 +42,7 @@ export const getTeachers = async ({
       "ta.house_no",
       "ta.barangay",
 
-      "ua.email",
+      //"ua.email",
       "ua.role",
       "ua.account_status",
     ]);
