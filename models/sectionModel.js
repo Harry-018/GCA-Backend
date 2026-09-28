@@ -91,13 +91,27 @@ export const getSectionDetails = async (section_id) => {
 
   const enrollments = await db
     .selectFrom("enrollment as e")
-
     .innerJoin("students as st", "e.stu_id", "st.stu_id")
+    .innerJoin("submissions as sub", "st.submission_id", "sub.submission_id")
+    .innerJoin(
+      "app_approval as aa",
+      "sub.app_approval_id",
+      "aa.app_approval_id",
+    )
+    .innerJoin("applications as a", "aa.application_id", "a.application_id")
+    .innerJoin(
+      "applicant_info as ai",
+      "a.applicant_info_id",
+      "ai.applicant_info_id",
+    )
     .select([
       "e.enrollment_id",
       "e.stu_id",
       "st.stu_num",
       "st.lrn",
+      "ai.first_name",
+      "ai.middle_name",
+      "ai.last_name",
       "e.enr_status",
       "e.date_enrolled",
     ])
