@@ -591,3 +591,15 @@ export const getAdviserTeachers = async () => {
     .orderBy("ti.first_name", "asc")
     .execute();
 };
+
+export const getSectionNames = async () => {
+  return await db
+    .selectFrom("section_names")
+    .select(["section_name_id", "section_name"])
+    .orderBy("section_name", "asc")
+    .execute();
+};
+
+const result = await getSectionNames();
+
+console.log("SECTION NAMES:", result);

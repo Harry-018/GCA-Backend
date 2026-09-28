@@ -262,3 +262,20 @@ export const promoteStudents = async (req, res) => {
     });
   }
 };
+
+export const getSectionNames = async (req, res) => {
+  try {
+    const sectionNames = await secm.getSectionNames();
+
+    res.status(200).json({
+      data: sectionNames,
+    });
+  } catch (error) {
+    console.error("Failed to get section names:", error);
+
+    res.status(500).json({
+      message: "Failed to get section names.",
+      error: error.message,
+    });
+  }
+};

@@ -13,6 +13,7 @@ import {
   removeStudentsFromSection,
   promoteStudents,
   getAdviserTeachers,
+  getSectionNames,
 } from "../controllers/sectionController.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
@@ -36,6 +37,8 @@ router.get(
 );
 
 router.get("/advisers", authenticate, authorize("admin"), getAdviserTeachers);
+
+router.get("/names", authenticate, authorize("admin"), getSectionNames);
 
 router.get("/:section_id", authenticate, authorize("admin"), getSectionDetails);
 
