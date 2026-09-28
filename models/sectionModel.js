@@ -131,6 +131,18 @@ export const getSectionDetails = async (section_id) => {
 };
 
 export const createSection = async (data) => {
+  if (!data.section_name_id) {
+    throw new Error("Section name is required.");
+  }
+
+  if (!data.sy_grade_level_id) {
+    throw new Error("Grade level is required.");
+  }
+
+  if (!data.adviser_teacher_id) {
+    throw new Error("Adviser teacher is required.");
+  }
+
   const existingSection = await db
     .selectFrom("sections")
     .select("section_id")
