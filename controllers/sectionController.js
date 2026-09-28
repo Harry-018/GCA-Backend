@@ -17,6 +17,22 @@ export const getSectionGradeLevels = async (req, res) => {
   }
 };
 
+export const getAdviserTeachers = async (req, res) => {
+  try {
+    const teachers = await secm.getAdviserTeachers();
+
+    res.status(200).json({
+      data: teachers,
+    });
+  } catch (error) {
+    console.error("Failed to get adviser teachers:", error);
+
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
 export const getSectionsByGradeLevel = async (req, res) => {
   try {
     const { sy_grade_level_id } = req.params;
@@ -243,22 +259,6 @@ export const promoteStudents = async (req, res) => {
     res.status(500).json({
       message: "Failed to promote students.",
       error: error.message,
-    });
-  }
-};
-
-export const getAdviserTeachers = async (req, res) => {
-  try {
-    const teachers = await secm.getAdviserTeachers();
-
-    res.status(200).json({
-      data: teachers,
-    });
-  } catch (error) {
-    console.error("Failed to get adviser teachers:", error);
-
-    res.status(500).json({
-      message: error.message,
     });
   }
 };
