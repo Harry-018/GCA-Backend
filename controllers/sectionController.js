@@ -246,3 +246,19 @@ export const promoteStudents = async (req, res) => {
     });
   }
 };
+
+export const getAdviserTeachers = async (req, res) => {
+  try {
+    const teachers = await tm.getAdviserTeachers();
+
+    res.status(200).json({
+      data: teachers,
+    });
+  } catch (error) {
+    console.error("Failed to get adviser teachers:", error);
+
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};

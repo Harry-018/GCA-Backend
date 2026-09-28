@@ -568,3 +568,26 @@ export const promoteStudents = async (
     };
   });
 };
+
+export const getAdviserTeachers = async () => {
+  return await db
+    .selectFrom("teachers as t")
+    .innerJoin("teacher_info as ti", "t.teacher_info_id", "ti.teacher_info_id")
+    .innerJoin("user_accounts as ua", "ti.user_id", "ua.user_id")
+    .select([
+      "t.teacher_id",
+      "t.teacher_num",
+      "t.teacher_status",
+      "ti.first_name",
+      "ti.middle_name",
+      "ti.last_name",
+      "ua.user_id",
+      "ua.email",
+      "ua.account_status",
+    ])
+    .where("t.teacher_status", "=", "active")
+    .where("ua.account_status", "=", "active")
+    .orderBy("ti.last_name", "asc")
+    .orderBy("ti.first_name", "asc")
+    .execute();
+};

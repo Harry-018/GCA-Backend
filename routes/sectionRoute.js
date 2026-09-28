@@ -12,6 +12,7 @@ import {
   addStudentsToSection,
   removeStudentsFromSection,
   promoteStudents,
+  getAdviserTeachers,
 } from "../controllers/sectionController.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
@@ -76,6 +77,8 @@ router.patch(
   authorize("admin"),
   changeSectionTeacher,
 );
+
+router.get("/advisers", authenticate, authorize("admin"), getAdviserTeachers);
 
 export default router;
 
