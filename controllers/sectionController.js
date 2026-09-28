@@ -249,7 +249,7 @@ export const promoteStudents = async (req, res) => {
 
 export const getAdviserTeachers = async (req, res) => {
   try {
-    const teachers = await tm.getAdviserTeachers();
+    const teachers = await secm.getAdviserTeachers();
 
     res.status(200).json({
       data: teachers,
