@@ -411,7 +411,7 @@ export const addStudentsToSection = async (section_id, student_ids) => {
 };
 
 export const removeStudentsFromSection = async (section_id, student_ids) => {
-  return await db
+  const result = await db
     .updateTable("enrollment")
     .set({
       section_id: null,
@@ -420,6 +420,10 @@ export const removeStudentsFromSection = async (section_id, student_ids) => {
     .where("stu_id", "in", student_ids)
     .where("enr_status", "=", "enrolled")
     .executeTakeFirst();
+
+  return {
+    removed: Number(result.numUpdatedRows),
+  };
 };
 
 export const promoteStudents = async (
