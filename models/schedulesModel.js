@@ -609,7 +609,3 @@ export const deleteSchedule = async (schedule_id) => {
     schedule_id: Number(schedule_id),
   };
 };
-
-const r = await getScheduleTeachers();
-
-console.log(r);
