@@ -1,77 +1,75 @@
 import * as schedm from "../models/schedulesModel.js";
-/* * GET /api/schedules/grade-levels */ export const getScheduleGradeLevels =
-  async (req, res) => {
-    try {
-      const gradeLevels = await schedm.getScheduleGradeLevels();
-      res.status(200).json({ data: gradeLevels });
-    } catch (error) {
-      console.error("Failed to get schedule grade levels:", error);
-      res.status(500).json({
-        message: "Failed to get schedule grade levels.",
-        error: error.message,
-      });
+
+export const getScheduleGradeLevels = async (req, res) => {
+  try {
+    const gradeLevels = await schedm.getScheduleGradeLevels();
+    res.status(200).json({ data: gradeLevels });
+  } catch (error) {
+    console.error("Failed to get schedule grade levels:", error);
+    res.status(500).json({
+      message: "Failed to get schedule grade levels.",
+      error: error.message,
+    });
+  }
+};
+
+export const getScheduleSections = async (req, res) => {
+  try {
+    const { sy_grade_level_id } = req.params;
+    const id = Number(sy_grade_level_id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res
+        .status(400)
+        .json({ message: "Invalid school-year grade level ID." });
     }
-  };
-/* * GET /api/schedules/grade-levels/:sy_grade_level_id/sections */ export const getScheduleSections =
-  async (req, res) => {
-    try {
-      const { sy_grade_level_id } = req.params;
-      const id = Number(sy_grade_level_id);
-      if (!Number.isInteger(id) || id <= 0) {
-        return res
-          .status(400)
-          .json({ message: "Invalid school-year grade level ID." });
-      }
-      const sections = await schedm.getScheduleSections(id);
-      res.status(200).json({ data: sections });
-    } catch (error) {
-      console.error("Failed to get schedule sections:", error);
-      res.status(500).json({
-        message: "Failed to get schedule sections.",
-        error: error.message,
-      });
+    const sections = await schedm.getScheduleSections(id);
+    res.status(200).json({ data: sections });
+  } catch (error) {
+    console.error("Failed to get schedule sections:", error);
+    res.status(500).json({
+      message: "Failed to get schedule sections.",
+      error: error.message,
+    });
+  }
+};
+
+export const getSectionSchedules = async (req, res) => {
+  try {
+    const { section_id } = req.params;
+    const id = Number(section_id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "Invalid section ID." });
     }
-  };
-/* * GET /api/schedules/sections/:section_id */ export const getSectionSchedules =
-  async (req, res) => {
-    try {
-      const { section_id } = req.params;
-      const id = Number(section_id);
-      if (!Number.isInteger(id) || id <= 0) {
-        return res.status(400).json({ message: "Invalid section ID." });
-      }
-      const schedules = await schedm.getSectionSchedules(id);
-      res.status(200).json({ data: schedules });
-    } catch (error) {
-      console.error("Failed to get section schedules:", error);
-      res.status(500).json({
-        message: "Failed to get section schedules.",
-        error: error.message,
-      });
+    const schedules = await schedm.getSectionSchedules(id);
+    res.status(200).json({ data: schedules });
+  } catch (error) {
+    console.error("Failed to get section schedules:", error);
+    res.status(500).json({
+      message: "Failed to get section schedules.",
+      error: error.message,
+    });
+  }
+};
+
+export const getScheduleSubjects = async (req, res) => {
+  try {
+    const { section_id } = req.params;
+    const id = Number(section_id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "Invalid section ID." });
     }
-  };
-/* * GET /api/schedules/sections/:section_id/subjects */ export const getScheduleSubjects =
-  async (req, res) => {
-    try {
-      const { section_id } = req.params;
-      const id = Number(section_id);
-      if (!Number.isInteger(id) || id <= 0) {
-        return res.status(400).json({ message: "Invalid section ID." });
-      }
-      const subjects = await schedm.getScheduleSubjects(id);
-      res.status(200).json({ data: subjects });
-    } catch (error) {
-      console.error("Failed to get schedule subjects:", error);
-      res.status(500).json({
-        message: "Failed to get schedule subjects.",
-        error: error.message,
-      });
-    }
-  };
-/* * GET /api/schedules/teachers */ export const getScheduleTeachers = async (
-  req,
-  res,
-) => {
+    const subjects = await schedm.getScheduleSubjects(id);
+    res.status(200).json({ data: subjects });
+  } catch (error) {
+    console.error("Failed to get schedule subjects:", error);
+    res.status(500).json({
+      message: "Failed to get schedule subjects.",
+      error: error.message,
+    });
+  }
+};
+
+export const getScheduleTeachers = async (req, res) => {
   try {
     const teachers = await schedm.getScheduleTeachers();
     res.status(200).json({ data: teachers });
@@ -83,10 +81,8 @@ import * as schedm from "../models/schedulesModel.js";
     });
   }
 };
-/* * GET /api/schedules/rooms */ export const getScheduleRooms = async (
-  req,
-  res,
-) => {
+
+export const getScheduleRooms = async (req, res) => {
   try {
     const rooms = await schedm.getScheduleRooms();
     res.status(200).json({ data: rooms });
@@ -97,10 +93,8 @@ import * as schedm from "../models/schedulesModel.js";
       .json({ message: "Failed to get schedule rooms.", error: error.message });
   }
 };
-/* * GET /api/schedules/days */ export const getScheduleDays = async (
-  req,
-  res,
-) => {
+
+export const getScheduleDays = async (req, res) => {
   try {
     const days = await schedm.getScheduleDays();
     res.status(200).json({ data: days });
@@ -111,10 +105,8 @@ import * as schedm from "../models/schedulesModel.js";
       .json({ message: "Failed to get schedule days.", error: error.message });
   }
 };
-/* * GET /api/schedules/times */ export const getScheduleTimes = async (
-  req,
-  res,
-) => {
+
+export const getScheduleTimes = async (req, res) => {
   try {
     const times = await schedm.getScheduleTimes();
     res.status(200).json({ data: times });
@@ -125,7 +117,8 @@ import * as schedm from "../models/schedulesModel.js";
       .json({ message: "Failed to get schedule times.", error: error.message });
   }
 };
-/* * POST /api/schedules */ export const createSchedule = async (req, res) => {
+
+export const createSchedule = async (req, res) => {
   try {
     const {
       section_id,
@@ -165,10 +158,8 @@ import * as schedm from "../models/schedulesModel.js";
       .json({ message: "Failed to create schedule.", error: error.message });
   }
 };
-/* * PUT /api/schedules/:schedule_id */ export const editSchedule = async (
-  req,
-  res,
-) => {
+
+export const editSchedule = async (req, res) => {
   try {
     const { schedule_id } = req.params;
     const id = Number(schedule_id);
@@ -213,10 +204,8 @@ import * as schedm from "../models/schedulesModel.js";
       .json({ message: "Failed to edit schedule.", error: error.message });
   }
 };
-/* * DELETE /api/schedules/:schedule_id */ export const deleteSchedule = async (
-  req,
-  res,
-) => {
+
+export const deleteSchedule = async (req, res) => {
   try {
     const { schedule_id } = req.params;
     const id = Number(schedule_id);
