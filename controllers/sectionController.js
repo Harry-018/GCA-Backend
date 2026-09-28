@@ -198,7 +198,7 @@ export const removeStudentsFromSection = async (req, res) => {
       });
     }
 
-    const result = await sm.removeStudentsFromSection(
+    const result = await secm.removeStudentsFromSection(
       Number(section_id),
       student_ids.map(Number),
     );
