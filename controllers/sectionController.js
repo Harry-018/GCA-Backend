@@ -121,7 +121,13 @@ export const changeSectionTeacher = async (req, res) => {
     const { section_id } = req.params;
     const { adviser_teacher_id } = req.body;
 
-    const result = await secm.changeSectionTeacher(
+    if (!adviser_teacher_id) {
+      return res.status(400).json({
+        message: "Teacher is required.",
+      });
+    }
+
+    const result = await sm.changeSectionTeacher(
       Number(section_id),
       Number(adviser_teacher_id),
     );
@@ -131,11 +137,10 @@ export const changeSectionTeacher = async (req, res) => {
       data: result,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Failed to change section teacher:", error);
 
     res.status(500).json({
-      message: "Failed to change section teacher.",
-      error: error.message,
+      message: error.message,
     });
   }
 };

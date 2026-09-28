@@ -27,7 +27,12 @@ router.get(
   getSectionGradeLevels,
 );
 
-router.get("/grade-level/:sy_grade_level_id", getSectionsByGradeLevel);
+router.get(
+  "/grade-level/:sy_grade_level_id",
+  authenticate,
+  authorize("admin"),
+  getSectionsByGradeLevel,
+);
 
 router.get("/:section_id", authenticate, authorize("admin"), getSectionDetails);
 
