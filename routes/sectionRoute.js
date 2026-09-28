@@ -35,6 +35,8 @@ router.get(
   getSectionsByGradeLevel,
 );
 
+router.get("/advisers", authenticate, authorize("admin"), getAdviserTeachers);
+
 router.get("/:section_id", authenticate, authorize("admin"), getSectionDetails);
 
 router.post("/", authenticate, authorize("admin"), createSection);
@@ -77,8 +79,6 @@ router.patch(
   authorize("admin"),
   changeSectionTeacher,
 );
-
-router.get("/advisers", authenticate, authorize("admin"), getAdviserTeachers);
 
 export default router;
 
