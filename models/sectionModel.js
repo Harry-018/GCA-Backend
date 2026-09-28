@@ -131,6 +131,20 @@ export const getSectionDetails = async (section_id) => {
 };
 
 export const createSection = async (data) => {
+  const existingSection = await db
+    .selectFrom("sections")
+    .select("section_id")
+    .where("sy_grade_level_id", "=", data.sy_grade_level_id)
+    .where("section_name_id", "=", data.section_name_id)
+    .where("section_status", "=", "active")
+    .executeTakeFirst();
+
+  if (existingSection) {
+    throw new Error(
+      "This section name is already assigned to this grade level.",
+    );
+  }
+
   const result = await db
     .insertInto("sections")
     .values({
