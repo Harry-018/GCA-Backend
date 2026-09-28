@@ -29,6 +29,9 @@ export const getSectionGradeLevels = async () => {
       "sgl.sy_grade_level_id",
       "gl.grade_level_id",
       "gl.grade_level_name",
+      "sy.school_year_id",
+      "sy.start_date",
+      "sy.end_date",
     ])
     .orderBy("gl.grade_level_id", "asc")
     .execute();
