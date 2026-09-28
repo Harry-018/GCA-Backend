@@ -577,7 +577,6 @@ export const getAdviserTeachers = async () => {
     .select([
       "t.teacher_id",
       "t.teacher_num",
-      "t.teacher_status",
       "ti.first_name",
       "ti.middle_name",
       "ti.last_name",
@@ -591,3 +590,4 @@ export const getAdviserTeachers = async () => {
     .orderBy("ti.first_name", "asc")
     .execute();
 };
+
