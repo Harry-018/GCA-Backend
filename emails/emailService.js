@@ -79,7 +79,9 @@ export const sendAccountActivationEmail = async ({ email, token }) => {
   await brevo.transactionalEmails.sendTransacEmail({
     subject: "Activate Your Grace Christian Academy Account",
 
-    textContent: `Hello, Your Grace Christian Academy account has been created. Please use the link below to activate your account and set your password: ${activationUrl} 
+    textContent: `Hello, Your Grace Christian Academy account has been created. Please use the link below to activate your account and set your password:
+    
+    ${activationUrl} 
     
     This activation link will expire in 24 hours. If you did not expect this email, you may safely ignore it. Grace Christian Academy `,
 

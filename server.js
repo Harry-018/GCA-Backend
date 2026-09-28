@@ -13,7 +13,7 @@ import tr from "./routes/teacherRegistrationRoutes.js";
 import ai from "./routes/accountInvitationRoutes.js";
 import secm from "./routes/sectionRoute.js";
 import schedm from "./routes/schedulesRoutes.js";
-
+import userAccountsRoutes from "./routes/userAccountsRoutes.js";
 dotenv.config();
 
 console.log("Starting server...");
@@ -35,6 +35,7 @@ app.use("/api/teacher-registration", tr);
 app.use("/api/account-invitations", ai);
 app.use("/api/sections", secm);
 app.use("/api/schedules", schedm);
+app.use("/api/user-accounts", userAccountsRoutes);
 
 const PORT = process.env.PORT || 5000;
 
