@@ -54,6 +54,7 @@ export const getSectionsByGradeLevel = async (sy_grade_level_id) => {
       "s.section_status",
     ])
     .where("s.sy_grade_level_id", "=", sy_grade_level_id)
+    .where("s.section_status", "=", "active")
     .orderBy("sn.section_name", "asc")
     .execute();
 };
@@ -590,4 +591,3 @@ export const getAdviserTeachers = async () => {
     .orderBy("ti.first_name", "asc")
     .execute();
 };
-
