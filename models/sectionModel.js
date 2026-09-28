@@ -70,8 +70,8 @@ export const getSectionDetails = async (section_id) => {
     )
     .innerJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
     .innerJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
-    .innerJoin("teachers as t", "s.adviser_teacher_id", "t.teacher_id")
-    .innerJoin("teacher_info as ti", "t.teacher_info_id", "ti.teacher_info_id")
+    .leftJoin("teachers as t", "s.adviser_teacher_id", "t.teacher_id")
+    .leftJoin("teacher_info as ti", "t.teacher_info_id", "ti.teacher_info_id")
     .select([
       "s.section_id",
       "sn.section_name",
@@ -193,22 +193,53 @@ export const editSection = async (section_id, data) => {
 };
 
 export const updateSectionStatus = async (section_id, status) => {
-  const result = await db
-    .updateTable("sections")
-    .set({
+  return await db.transaction().execute(async (trx) => {
+    const section = await trx
+      .selectFrom("sections")
+      .select(["section_id", "section_status"])
+      .where("section_id", "=", section_id)
+      .executeTakeFirst();
+
+    if (!section) {
+      throw new Error("Section not found.");
+    }
+
+    if (status === "inactive") {
+      // Remove students from the section.
+      await trx
+        .updateTable("enrollment")
+        .set({
+          section_id: null,
+        })
+        .where("section_id", "=", section_id)
+        .where("enr_status", "=", "enrolled")
+        .executeTakeFirst();
+
+      // Deactivate the section and remove its adviser.
+      await trx
+        .updateTable("sections")
+        .set({
+          section_status: "inactive",
+          adviser_teacher_id: null,
+        })
+        .where("section_id", "=", section_id)
+        .executeTakeFirst();
+    } else {
+      // Reactivation only changes the status.
+      await trx
+        .updateTable("sections")
+        .set({
+          section_status: status,
+        })
+        .where("section_id", "=", section_id)
+        .executeTakeFirst();
+    }
+
+    return {
+      section_id: Number(section_id),
       section_status: status,
-    })
-    .where("section_id", "=", section_id)
-    .executeTakeFirst();
-
-  if (Number(result.numUpdatedRows) !== 1) {
-    throw new Error("Section not found.");
-  }
-
-  return {
-    section_id: Number(section_id),
-    section_status: status,
-  };
+    };
+  });
 };
 
 export const changeSectionTeacher = async (section_id, adviser_teacher_id) => {
