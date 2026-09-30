@@ -615,7 +615,12 @@ export const enrollApplicant = async (data) => {
     // 2. Get the application's school year and grade level
     const application = await trx
       .selectFrom("applications")
-      .select(["application_id", "school_year_id", "grade_level_id"])
+      .select([
+        "application_id",
+        "applicant_info_id",
+        "school_year_id",
+        "grade_level_id",
+      ])
       .where("application_id", "=", approval.application_id)
       .executeTakeFirst();
 
@@ -692,10 +697,71 @@ export const enrollApplicant = async (data) => {
 
     const enrollment_id = Number(officialEnrollment.insertId);
 
+    // 8. Find parent who will receive account
+    const accountParent = await trx
+      .selectFrom("applicant_parent")
+      .innerJoin(
+        "parent_info",
+        "parent_info.parent_info_id",
+        "applicant_parent.parent_info_id",
+      )
+      .select([
+        "parent_info.parent_info_id",
+        "parent_info.first_name",
+        "parent_info.last_name",
+        "parent_info.email",
+        "parent_info.user_id",
+        "applicant_parent.will_receive_account",
+      ])
+      .where(
+        "applicant_parent.applicant_info_id",
+        "=",
+        application.applicant_info_id,
+      )
+      .where("applicant_parent.will_receive_account", "=", 1)
+      .executeTakeFirst();
+
+    if (!accountParent) {
+      throw new Error("Parent account recipient not found.");
+    }
+
+    if (!accountParent.email) {
+      throw new Error("Parent account recipient has no email.");
+    }
+
+    // 9. Create parent user account
+    let user_id = accountParent.user_id;
+
+    if (!user_id) {
+      const userAccount = await trx
+        .insertInto("user_accounts")
+        .values({
+          email: accountParent.email,
+          password: null,
+          first_name: accountParent.first_name,
+          last_name: accountParent.last_name,
+          role: "parent",
+          account_status: "pending",
+          created_at: new Date(),
+        })
+        .executeTakeFirst();
+
+      user_id = Number(userAccount.insertId);
+
+      await trx
+        .updateTable("parent_info")
+        .set({
+          user_id,
+        })
+        .where("parent_info_id", "=", accountParent.parent_info_id)
+        .execute();
+    }
+
     return {
       submission_id,
       student_id: stu_id,
       enrollment_id,
+      user_id,
     };
   });
 };

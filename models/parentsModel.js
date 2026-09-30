@@ -28,9 +28,21 @@ export const getParents = async ({ search = "", page = 1, limit = 10 }) => {
    * Main parent query
    */
   let query = buildParentQuery()
-    .select(["p.parent_info_id", "p.last_name", "p.first_name", "p.email"])
+    .select([
+      "p.parent_info_id",
+      "p.last_name",
+      "p.first_name",
+      "p.email",
+      "p.contact_number",
+    ])
     .select(sql`COUNT(DISTINCT ${sql.ref("s.stu_id")})`.as("children"))
-    .groupBy(["p.parent_info_id", "p.last_name", "p.first_name", "p.email"]);
+    .groupBy([
+      "p.parent_info_id",
+      "p.last_name",
+      "p.first_name",
+      "p.email",
+      "p.contact_number",
+    ]);
 
   /*
    * Search
