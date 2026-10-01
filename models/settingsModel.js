@@ -30,6 +30,7 @@ export const getAllSubjects = async () => {
   return await db
     .selectFrom("subjects")
     .select(["subject_id", "subject_name"])
+    .where("subject_status", "=", "active")
     .orderBy("subject_name", "asc")
     .execute();
 };
@@ -243,6 +244,25 @@ export const createSubject = async (subjectName) => {
       subject_name: name,
     };
   });
+};
+
+export const removeSubject = async (subjectId) => {
+  const result = await db
+    .updateTable("subjects")
+    .set({
+      subject_status: "archived",
+    })
+    .where("subject_id", "=", subjectId)
+    .where("subject_status", "=", "active")
+    .executeTakeFirst();
+
+  if (Number(result.numUpdatedRows) === 0) {
+    throw new Error("Subject not found or already archived.");
+  }
+
+  return {
+    subject_id: subjectId,
+  };
 };
 
 export const renameSubject = async (subjectId, subjectName) => {

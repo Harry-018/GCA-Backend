@@ -25,6 +25,13 @@ router.patch(
 );
 
 router.patch(
+  "/subjects/:subjectId/archive",
+  authenticate,
+  authorize("admin"),
+  setc.removeSubject,
+);
+
+router.patch(
   "/skills/:skillId/archive",
   authenticate,
   authorize("admin"),
