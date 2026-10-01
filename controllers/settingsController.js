@@ -104,6 +104,24 @@ export const createSubject = async (req, res) => {
     });
   }
 };
+export const removeSubject = async (req, res) => {
+  try {
+    const { subjectId } = req.params;
+
+    const result = await setm.removeSubject(Number(subjectId));
+
+    res.status(200).json({
+      message: "Subject removed successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error removing subject:", error);
+
+    res.status(400).json({
+      message: error.message || "Failed to remove subject.",
+    });
+  }
+};
 
 export const renameSubject = async (req, res) => {
   try {
