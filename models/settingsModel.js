@@ -1,31 +1,5 @@
 import db from "../config/db.js";
 
-export const getGradeLevelsWithSubjectCount = async () => {
-  return await db
-    .selectFrom("grade_levels as gl")
-    .leftJoin(
-      "schoolyears_gradelevels as sygl",
-      "sygl.grade_level_id",
-      "gl.grade_level_id",
-    )
-    .leftJoin(
-      "schoolyears_gradelevels_subjects as sygls",
-      "sygls.sy_grade_level_id",
-      "sygl.sy_grade_level_id",
-    )
-    .leftJoin("school_years as sy", "sy.school_year_id", "sygl.school_year_id")
-    .select(["gl.grade_level_id", "gl.grade_level_name"])
-    .select((eb) => [
-      eb.fn.count("sygls.sy_gradelevel_subject_id").as("subject_count"),
-    ])
-    .where("sy.sy_status", "=", "active")
-    .where("sygl.sy_gradelevel_status", "=", "active")
-    .where("sygls.sy_gradelevel_subject_status", "=", "active")
-    .groupBy(["gl.grade_level_id", "gl.grade_level_name"])
-    .orderBy("gl.grade_level_id", "asc")
-    .execute();
-};
-
 export const getAllSubjects = async () => {
   return await db
     .selectFrom("subjects")
