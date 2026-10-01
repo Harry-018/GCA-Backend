@@ -73,4 +73,18 @@ router.patch(
   setc.removeSubjectFromGradeLevel,
 );
 
+router.get(
+  "/skills/subject/:subjectId/archived",
+  authenticate,
+  authorize("admin"),
+  setc.getArchivedSkillsBySubject,
+);
+
+router.patch(
+  "/skills/:skillId/reactivate",
+  authenticate,
+  authorize("admin"),
+  setc.reactivateSkill,
+);
+
 export default router;

@@ -1,19 +1,5 @@
 import * as setm from "../models/settingsModel.js";
 
-export const getGradeLevelsWithSubjectCount = async (req, res) => {
-  try {
-    const gradeLevels = await setm.getGradeLevelsWithSubjectCount();
-
-    res.status(200).json(gradeLevels);
-  } catch (error) {
-    console.error("Error fetching grade levels:", error);
-
-    res.status(500).json({
-      message: "Failed to fetch grade levels.",
-    });
-  }
-};
-
 export const getAllSubjects = async (req, res) => {
   try {
     const subjects = await setm.getAllSubjects();
@@ -145,25 +131,6 @@ export const renameSubject = async (req, res) => {
   }
 };
 
-export const removeSubject = async (req, res) => {
-  try {
-    const { subjectId } = req.params;
-
-    const result = await setm.removeSubject(Number(subjectId));
-
-    res.status(200).json({
-      message: "Subject removed successfully.",
-      data: result,
-    });
-  } catch (error) {
-    console.error("Error removing subject:", error);
-
-    res.status(400).json({
-      message: error.message || "Failed to remove subject.",
-    });
-  }
-};
-
 export const createSkill = async (req, res) => {
   try {
     const { subject_id, skill_name, description } = req.body;
@@ -243,6 +210,43 @@ export const removeSkill = async (req, res) => {
 
     res.status(400).json({
       message: error.message || "Failed to remove skill.",
+    });
+  }
+};
+
+export const getArchivedSkillsBySubject = async (req, res) => {
+  try {
+    const { subjectId } = req.params;
+
+    const skills = await setm.getArchivedSkillsBySubject(Number(subjectId));
+
+    res.status(200).json({
+      data: skills,
+    });
+  } catch (error) {
+    console.error("Error fetching archived skills:", error);
+
+    res.status(500).json({
+      message: "Failed to fetch archived skills.",
+    });
+  }
+};
+
+export const reactivateSkill = async (req, res) => {
+  try {
+    const { skillId } = req.params;
+
+    const result = await setm.reactivateSkill(Number(skillId));
+
+    res.status(200).json({
+      message: "Skill reactivated successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error reactivating skill:", error);
+
+    res.status(400).json({
+      message: error.message || "Failed to reactivate skill.",
     });
   }
 };

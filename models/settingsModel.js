@@ -344,7 +344,8 @@ export const createSkill = async (data) => {
     throw new Error("Skill name is required.");
   }
 
-  // Make sure the subject exists
+  const name = skill_name.trim();
+
   const subject = await db
     .selectFrom("subjects")
     .select("subject_id")
@@ -355,41 +356,78 @@ export const createSkill = async (data) => {
     throw new Error("Subject not found.");
   }
 
-  // Prevent duplicate skill names within the same subject
   const existingSkill = await db
     .selectFrom("skill")
-    .select("skill_id")
+    .select(["skill_id", "skill_name", "description", "skill_status"])
     .where("subject_id", "=", subject_id)
-    .where("skill_name", "=", skill_name.trim())
+    .where("skill_name", "=", name)
     .executeTakeFirst();
 
   if (existingSkill) {
-    throw new Error("Skill already exists for this subject.");
+    if (existingSkill.skill_status === "active") {
+      throw new Error("Skill already exists for this subject.");
+    }
+
+    // Archived skill exists.
+    // Reactivate it instead of creating a duplicate.
+    await db
+      .updateTable("skill")
+      .set({
+        skill_status: "active",
+        description: description?.trim() || null,
+      })
+      .where("skill_id", "=", existingSkill.skill_id)
+      .executeTakeFirst();
+
+    return {
+      skill_id: existingSkill.skill_id,
+      subject_id,
+      skill_name: existingSkill.skill_name,
+      description: description?.trim() || null,
+      skill_status: "active",
+    };
   }
 
   const result = await db
     .insertInto("skill")
     .values({
       subject_id,
-      skill_name: skill_name.trim(),
+      skill_name: name,
       description: description?.trim() || null,
+      skill_status: "active",
     })
     .executeTakeFirst();
 
   return {
     skill_id: Number(result.insertId),
     subject_id,
-    skill_name: skill_name.trim(),
+    skill_name: name,
     description: description?.trim() || null,
+    skill_status: "active",
   };
 };
-
 export const getSkillsBySubject = async (subjectId) => {
   return await db
     .selectFrom("skill")
     .select(["skill_id", "skill_name", "description", "subject_id"])
     .where("subject_id", "=", subjectId)
     .where("skill_status", "=", "active")
+    .orderBy("skill_id", "asc")
+    .execute();
+};
+
+export const getArchivedSkillsBySubject = async (subjectId) => {
+  return await db
+    .selectFrom("skill")
+    .select([
+      "skill_id",
+      "skill_name",
+      "description",
+      "subject_id",
+      "skill_status",
+    ])
+    .where("subject_id", "=", subjectId)
+    .where("skill_status", "=", "archived")
     .orderBy("skill_id", "asc")
     .execute();
 };
@@ -456,6 +494,25 @@ export const removeSkill = async (skillId) => {
 
   if (Number(result.numUpdatedRows) === 0) {
     throw new Error("Skill not found or already archived.");
+  }
+
+  return {
+    skill_id: skillId,
+  };
+};
+
+export const reactivateSkill = async (skillId) => {
+  const result = await db
+    .updateTable("skill")
+    .set({
+      skill_status: "active",
+    })
+    .where("skill_id", "=", skillId)
+    .where("skill_status", "=", "archived")
+    .executeTakeFirst();
+
+  if (Number(result.numUpdatedRows) === 0) {
+    throw new Error("Skill not found or already active.");
   }
 
   return {
