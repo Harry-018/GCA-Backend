@@ -365,7 +365,6 @@ export const addSubjectsToGradeLevel = async (data) => {
     ...new Set(data.subject_ids.map((subject_id) => Number(subject_id))),
   ];
   return await db.transaction().execute(async (trx) => {
-    // 1. Get the selected subjects and their current subject versions
     const subjects = await trx
       .selectFrom("subjects as s")
       .innerJoin("subject_versions as sv", "sv.subject_id", "s.subject_id")
@@ -381,7 +380,7 @@ export const addSubjectsToGradeLevel = async (data) => {
       .execute();
     if (subjects.length !== subject_ids.length) {
       throw new Error("One or more subjects were not found.");
-    } // 2. Get existing assignments
+    }
     const existingAssignments = await trx
       .selectFrom("schoolyears_gradelevels_subjects")
       .select([
@@ -397,25 +396,24 @@ export const addSubjectsToGradeLevel = async (data) => {
       existingAssignments.map((item) => [Number(item.subject_id), item]),
     );
     const subjectsToInsert = [];
-    const subjectsToReactivate = []; // 3. Determine whether to insert, reactivate, or skip for (const subject of subjects) {
-    const existing = existingMap.get(Number(subject.subject_id));
-    if (!existing) {
-      // Never assigned before
-      subjectsToInsert.push({
-        sy_grade_level_id,
-        subject_id: subject.subject_id,
-        subject_version_id: subject.subject_version_id,
-        sy_gradelevel_subject_status: "active",
-      });
-    } else if (existing.sy_gradelevel_subject_status === "archived") {
-      // Previously assigned but archived
-      subjectsToReactivate.push({
-        sy_gradelevel_subject_id: existing.sy_gradelevel_subject_id,
-        subject_version_id: subject.subject_version_id,
-      });
-    } // If already active, do nothing }
-    // 4. Reactivate archived assignments for (const subject of subjectsToReactivate)
-    {
+    const subjectsToReactivate = [];
+    for (const subject of subjects) {
+      const existing = existingMap.get(Number(subject.subject_id));
+      if (!existing) {
+        subjectsToInsert.push({
+          sy_grade_level_id,
+          subject_id: Number(subject.subject_id),
+          subject_version_id: Number(subject.subject_version_id),
+          sy_gradelevel_subject_status: "active",
+        });
+      } else if (existing.sy_gradelevel_subject_status === "archived") {
+        subjectsToReactivate.push({
+          sy_gradelevel_subject_id: Number(existing.sy_gradelevel_subject_id),
+          subject_version_id: Number(subject.subject_version_id),
+        });
+      }
+    }
+    for (const subject of subjectsToReactivate) {
       await trx
         .updateTable("schoolyears_gradelevels_subjects")
         .set({
@@ -428,7 +426,7 @@ export const addSubjectsToGradeLevel = async (data) => {
           subject.sy_gradelevel_subject_id,
         )
         .executeTakeFirst();
-    } // 5. Insert new assignments
+    }
     if (subjectsToInsert.length > 0) {
       await trx
         .insertInto("schoolyears_gradelevels_subjects")
