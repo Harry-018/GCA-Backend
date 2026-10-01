@@ -361,78 +361,88 @@ export const getSubjectsInGradeLevel = async (sy_grade_level_id) => {
 
 export const addSubjectsToGradeLevel = async (data) => {
   const sy_grade_level_id = Number(data.sy_grade_level_id);
-
   const subject_ids = [
     ...new Set(data.subject_ids.map((subject_id) => Number(subject_id))),
   ];
-
   return await db.transaction().execute(async (trx) => {
-    // Get existing subject assignments for this grade level
+    // 1. Get the selected subjects and their current subject versions
+    const subjects = await trx
+      .selectFrom("subjects as s")
+      .innerJoin("subject_versions as sv", "sv.subject_id", "s.subject_id")
+      .select([
+        "s.subject_id",
+        "s.subject_name",
+        "sv.subject_version_id",
+        "sv.subject_name",
+      ])
+      .where("s.subject_id", "in", subject_ids)
+      .where("s.subject_status", "=", "active")
+      .whereRef("sv.subject_name", "=", "s.subject_name")
+      .execute();
+    if (subjects.length !== subject_ids.length) {
+      throw new Error("One or more subjects were not found.");
+    } // 2. Get existing assignments
     const existingAssignments = await trx
       .selectFrom("schoolyears_gradelevels_subjects")
       .select([
         "sy_gradelevel_subject_id",
         "subject_id",
+        "subject_version_id",
         "sy_gradelevel_subject_status",
       ])
       .where("sy_grade_level_id", "=", sy_grade_level_id)
       .where("subject_id", "in", subject_ids)
       .execute();
-
     const existingMap = new Map(
       existingAssignments.map((item) => [Number(item.subject_id), item]),
     );
-
     const subjectsToInsert = [];
-    const subjectsToReactivate = [];
-
-    for (const subject_id of subject_ids) {
-      const existing = existingMap.get(subject_id);
-
-      if (!existing) {
-        // Never assigned before
-        subjectsToInsert.push({
-          sy_grade_level_id,
-          subject_id,
-          sy_gradelevel_subject_status: "active",
-        });
-      } else if (existing.sy_gradelevel_subject_status === "archived") {
-        // Previously assigned but archived
-        subjectsToReactivate.push(existing.sy_gradelevel_subject_id);
-      }
-
-      // If already active, do nothing
-    }
-
-    // Reactivate archived assignments
-    if (subjectsToReactivate.length > 0) {
+    const subjectsToReactivate = []; // 3. Determine whether to insert, reactivate, or skip for (const subject of subjects) {
+    const existing = existingMap.get(Number(subject.subject_id));
+    if (!existing) {
+      // Never assigned before
+      subjectsToInsert.push({
+        sy_grade_level_id,
+        subject_id: subject.subject_id,
+        subject_version_id: subject.subject_version_id,
+        sy_gradelevel_subject_status: "active",
+      });
+    } else if (existing.sy_gradelevel_subject_status === "archived") {
+      // Previously assigned but archived
+      subjectsToReactivate.push({
+        sy_gradelevel_subject_id: existing.sy_gradelevel_subject_id,
+        subject_version_id: subject.subject_version_id,
+      });
+    } // If already active, do nothing }
+    // 4. Reactivate archived assignments for (const subject of subjectsToReactivate)
+    {
       await trx
         .updateTable("schoolyears_gradelevels_subjects")
         .set({
           sy_gradelevel_subject_status: "active",
+          subject_version_id: subject.subject_version_id,
         })
-        .where("sy_gradelevel_subject_id", "in", subjectsToReactivate)
-        .execute();
-    }
-
-    // Insert completely new assignments
-    let inserted = [];
-
+        .where(
+          "sy_gradelevel_subject_id",
+          "=",
+          subject.sy_gradelevel_subject_id,
+        )
+        .executeTakeFirst();
+    } // 5. Insert new assignments
     if (subjectsToInsert.length > 0) {
-      const result = await trx
+      await trx
         .insertInto("schoolyears_gradelevels_subjects")
         .values(subjectsToInsert)
         .execute();
-
-      inserted = subjectsToInsert.map((item) => item.subject_id);
     }
-
     return {
-      inserted: inserted.length,
+      inserted: subjectsToInsert.length,
       reactivated: subjectsToReactivate.length,
       skipped:
-        subject_ids.length - inserted.length - subjectsToReactivate.length,
-      subject_ids: inserted,
+        subject_ids.length -
+        subjectsToInsert.length -
+        subjectsToReactivate.length,
+      subject_ids: subjectsToInsert.map((subject) => subject.subject_id),
     };
   });
 };
