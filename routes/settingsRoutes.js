@@ -1,28 +1,61 @@
 import express from "express";
 import * as setc from "../controllers/settingsController.js";
+import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/subjects", setc.getAllSubjects);
+router.get("/subjects", authenticate, authorize("admin"), setc.getAllSubjects);
 
-router.post("/subjects", setc.createSubject);
+router.post("/subjects", authenticate, authorize("admin"), setc.createSubject);
 
-router.post("/skills", setc.createSkill);
+router.post("/skills", authenticate, authorize("admin"), setc.createSkill);
 
-router.patch("/skills/:skillId", setc.updateSkill);
+router.patch(
+  "/skills/:skillId",
+  authenticate,
+  authorize("admin"),
+  setc.updateSkill,
+);
 
-router.patch("/skills/:skillId/archive", setc.removeSkill);
+router.patch(
+  "/skills/:skillId/archive",
+  authenticate,
+  authorize("admin"),
+  setc.removeSkill,
+);
 
-router.get("/skills/subject/:subjectId", setc.getSkillsBySubject);
+router.get(
+  "/skills/subject/:subjectId",
+  authenticate,
+  authorize("admin"),
+  setc.getSkillsBySubject,
+);
 
-router.patch("/subjects/:subjectId", setc.renameSubject);
+router.patch(
+  "/subjects/:subjectId",
+  authenticate,
+  authorize("admin"),
+  setc.renameSubject,
+);
 
-router.get("/subjects/grade-level/:gradeLevelId", setc.getSubjectsByGradeLevel);
+router.get(
+  "/subjects/grade-level/:gradeLevelId",
+  authenticate,
+  authorize("admin"),
+  setc.getSubjectsByGradeLevel,
+);
 
-router.post("/subjects/grade-level/:gradeLevelId", setc.addSubjectToGradeLevel);
+router.post(
+  "/subjects/grade-level/:gradeLevelId",
+  authenticate,
+  authorize("admin"),
+  setc.addSubjectToGradeLevel,
+);
 
 router.patch(
   "/subjects/grade-level/assignment/:syGradelevelSubjectId",
+  authenticate,
+  authorize("admin"),
   setc.removeSubjectFromGradeLevel,
 );
 
