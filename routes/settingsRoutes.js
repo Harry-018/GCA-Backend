@@ -4,6 +4,13 @@ import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+router.get(
+  "/grade-levels",
+  authenticate,
+  authorize("admin"),
+  setc.getGradeLevelsWithSubjectCount,
+);
+
 router.get("/subjects", authenticate, authorize("admin"), setc.getAllSubjects);
 
 router.post("/subjects", authenticate, authorize("admin"), setc.createSubject);
