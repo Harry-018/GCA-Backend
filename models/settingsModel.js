@@ -38,6 +38,7 @@ export const getSubjectsByGradeLevel = async (gradeLevelId) => {
   return await db
     .selectFrom("schoolyears_gradelevels as sygl")
     .innerJoin("school_years as sy", "sy.school_year_id", "sygl.school_year_id")
+    .innerJoin("grade_levels as gl", "gl.grade_level_id", "sygl.grade_level_id")
     .innerJoin(
       "schoolyears_gradelevels_subjects as sygls",
       "sygls.sy_grade_level_id",
@@ -51,6 +52,7 @@ export const getSubjectsByGradeLevel = async (gradeLevelId) => {
     .innerJoin("subjects as s", "s.subject_id", "sv.subject_id")
     .select([
       "sygls.sy_gradelevel_subject_id",
+      "gl.grade_level_name",
       "s.subject_id",
       "sv.subject_version_id",
       "sv.subject_name",
