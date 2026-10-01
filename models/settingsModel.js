@@ -266,60 +266,69 @@ export const removeSubject = async (subjectId) => {
 };
 
 export const renameSubject = async (subjectId, subjectName) => {
-  const name = subjectName.trim();
+  const newName = subjectName.trim();
 
-  if (!name) {
+  if (!newName) {
     throw new Error("Subject name is required.");
   }
 
   return await db.transaction().execute(async (trx) => {
-    // 1. Find the existing master subject
+    // 1. Check if the subject exists
     const subject = await trx
       .selectFrom("subjects")
       .select(["subject_id", "subject_name"])
       .where("subject_id", "=", subjectId)
+      .where("subject_status", "=", "active")
       .executeTakeFirst();
 
     if (!subject) {
       throw new Error("Subject not found.");
     }
 
-    // 2. Check if another subject already has this name
+    // 2. Check if another subject already uses this name
     const duplicateSubject = await trx
       .selectFrom("subjects")
       .select("subject_id")
-      .where("subject_name", "=", name)
+      .where("subject_name", "=", newName)
       .where("subject_id", "!=", subjectId)
+      .where("subject_status", "=", "active")
       .executeTakeFirst();
 
     if (duplicateSubject) {
-      throw new Error("Another subject already uses this name.");
+      throw new Error("Another subject with this name already exists.");
     }
 
-    // 3. Update the master subject
+    // 3. Check if this name already exists as a version
+    const existingVersion = await trx
+      .selectFrom("subject_versions")
+      .select("subject_version_id")
+      .where("subject_id", "=", subjectId)
+      .where("subject_name", "=", newName)
+      .executeTakeFirst();
+
+    // 4. Only create a new version if it doesn't already exist
+    if (!existingVersion) {
+      await trx
+        .insertInto("subject_versions")
+        .values({
+          subject_id: subjectId,
+          subject_name: newName,
+        })
+        .executeTakeFirst();
+    }
+
+    // 5. Update the current master subject name
     await trx
       .updateTable("subjects")
       .set({
-        subject_name: name,
+        subject_name: newName,
       })
       .where("subject_id", "=", subjectId)
       .executeTakeFirst();
 
-    // 4. Create the new subject version
-    const versionResult = await trx
-      .insertInto("subject_versions")
-      .values({
-        subject_id: subjectId,
-        subject_name: name,
-      })
-      .executeTakeFirst();
-
-    const subjectVersionId = Number(versionResult.insertId);
-
     return {
       subject_id: subjectId,
-      subject_version_id: subjectVersionId,
-      subject_name: name,
+      subject_name: newName,
     };
   });
 };
