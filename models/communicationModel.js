@@ -45,6 +45,10 @@ export const getAnnouncementsByGradeLevel = async (sy_grade_level_id) => {
     .select([
       "an.announcement_id",
       "an.title",
+      "an.event_date",
+      "an.start_time",
+      "an.end_time",
+      "an.venue",
       "an.body",
       "an.posted_at",
       "ua.first_name",
@@ -93,6 +97,10 @@ export const createAnnouncementInGradeLevel = async (
     .insertInto("announcements")
     .values({
       title: data.title.trim(),
+      event_date: data.event_date,
+      start_time: data.start_time,
+      end_time: data.end_time,
+      venue: data.venue.trim(),
       body: data.body.trim(),
       posted_at: new Date(),
       sy_grade_level_id: Number(sy_grade_level_id),
@@ -103,6 +111,10 @@ export const createAnnouncementInGradeLevel = async (
   return {
     announcement_id: Number(result.insertId),
     title: data.title.trim(),
+    event_date: data.event_date,
+    start_time: data.start_time,
+    end_time: data.end_time,
+    venue: data.venue.trim(),
     body: data.body.trim(),
     sy_grade_level_id: Number(sy_grade_level_id),
     user_id: Number(user_id),
@@ -124,10 +136,14 @@ export const editAnnouncementInGradeLevel = async (announcement_id, data) => {
     throw new Error("Announcement not found.");
   }
 
-  const result = await db
+  await db
     .updateTable("announcements")
     .set({
       title: data.title.trim(),
+      event_date: data.event_date,
+      start_time: data.start_time,
+      end_time: data.end_time,
+      venue: data.venue.trim(),
       body: data.body.trim(),
     })
     .where("announcement_id", "=", announcement_id)
@@ -136,6 +152,10 @@ export const editAnnouncementInGradeLevel = async (announcement_id, data) => {
   return {
     announcement_id: Number(announcement_id),
     title: data.title.trim(),
+    event_date: data.event_date,
+    start_time: data.start_time,
+    end_time: data.end_time,
+    venue: data.venue.trim(),
     body: data.body.trim(),
   };
 };
