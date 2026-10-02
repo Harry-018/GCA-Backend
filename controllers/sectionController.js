@@ -1,113 +1,74 @@
 import * as secm from "../models/sectionModel.js";
-
 export const getSectionGradeLevels = async (req, res) => {
   try {
     const result = await secm.getSectionGradeLevels();
-
-    res.status(200).json({
-      data: result,
-    });
+    res.status(200).json({ data: result });
   } catch (error) {
     console.error(error);
-
     res.status(500).json({
       message: "Failed to get section grade levels.",
       error: error.message,
     });
   }
 };
-
 export const getAdviserTeachers = async (req, res) => {
   try {
     const teachers = await secm.getAdviserTeachers();
-
-    res.status(200).json({
-      data: teachers,
-    });
+    res.status(200).json({ data: teachers });
   } catch (error) {
     console.error("Failed to get adviser teachers:", error);
-
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
-
 export const getSectionsByGradeLevel = async (req, res) => {
   try {
     const { sy_grade_level_id } = req.params;
-
     const result = await secm.getSectionsByGradeLevel(
       Number(sy_grade_level_id),
     );
-
-    res.status(200).json({
-      data: result,
-    });
+    res.status(200).json({ data: result });
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      message: "Failed to get sections.",
-      error: error.message,
-    });
+    res
+      .status(500)
+      .json({ message: "Failed to get sections.", error: error.message });
   }
 };
-
 export const getSectionDetails = async (req, res) => {
   try {
     const { section_id } = req.params;
-
     const result = await secm.getSectionDetails(Number(section_id));
-
-    res.status(200).json({
-      data: result,
-    });
+    res.status(200).json({ data: result });
   } catch (error) {
     console.error(error);
-
     res.status(500).json({
       message: "Failed to get section details.",
       error: error.message,
     });
   }
 };
-
-export const createSection = async (req, res) => {
+export const assignSection = async (req, res) => {
   try {
-    const result = await secm.createSection(req.body);
-
-    res.status(201).json({
-      message: "Section created successfully.",
-      data: result,
+    const { section_name_id, sy_grade_level_id, adviser_teacher_id } = req.body;
+    if (!section_name_id) {
+      return res.status(400).json({ message: "section_name_id is required." });
+    }
+    if (!sy_grade_level_id) {
+      return res
+        .status(400)
+        .json({ message: "sy_grade_level_id is required." });
+    }
+    const result = await secm.assignSection({
+      section_name_id,
+      sy_grade_level_id,
+      adviser_teacher_id,
     });
+    res
+      .status(201)
+      .json({ message: "Section assigned successfully.", data: result });
   } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      message: "Failed to create section.",
-      error: error.message,
-    });
-  }
-};
-
-export const editSection = async (req, res) => {
-  try {
-    const { section_id } = req.params;
-
-    const result = await secm.editSection(Number(section_id), req.body);
-
-    res.status(200).json({
-      message: "Section updated successfully.",
-      data: result,
-    });
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      message: "Failed to update section.",
-      error: error.message,
-    });
+    console.error("Error assigning section:", error);
+    res.status(400).json({ message: error.message });
   }
 };
 
@@ -115,167 +76,118 @@ export const updateSectionStatus = async (req, res) => {
   try {
     const { section_id } = req.params;
     const { status } = req.body;
-
     const result = await secm.updateSectionStatus(Number(section_id), status);
-
-    res.status(200).json({
-      message: "Section status updated successfully.",
-      data: result,
-    });
+    res
+      .status(200)
+      .json({ message: "Section status updated successfully.", data: result });
   } catch (error) {
     console.error(error);
-
     res.status(500).json({
       message: "Failed to update section status.",
       error: error.message,
     });
   }
 };
-
 export const changeSectionTeacher = async (req, res) => {
   try {
     const { section_id } = req.params;
     const { adviser_teacher_id } = req.body;
-
     if (!adviser_teacher_id) {
-      return res.status(400).json({
-        message: "Teacher is required.",
-      });
+      return res.status(400).json({ message: "Teacher is required." });
     }
-
-    const result = await sm.changeSectionTeacher(
+    const result = await secm.changeSectionTeacher(
       Number(section_id),
       Number(adviser_teacher_id),
     );
-
-    res.status(200).json({
-      message: "Section teacher changed successfully.",
-      data: result,
-    });
+    res
+      .status(200)
+      .json({ message: "Section teacher changed successfully.", data: result });
   } catch (error) {
     console.error("Failed to change section teacher:", error);
-
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(400).json({ message: error.message });
   }
 };
-
 export const searchStudentsForSection = async (req, res) => {
   try {
     const { section_id } = req.params;
     const { search = "" } = req.query;
-
     const result = await secm.searchStudentsForSection(
       Number(section_id),
       search,
     );
-
-    res.status(200).json({
-      data: result,
-    });
+    res.status(200).json({ data: result });
   } catch (error) {
     console.error(error);
-
     res.status(500).json({
       message: "Failed to search students for section.",
       error: error.message,
     });
   }
 };
-
 export const addStudentsToSection = async (req, res) => {
   try {
     const { section_id } = req.params;
     const { student_ids } = req.body;
-
     const result = await secm.addStudentsToSection(
       Number(section_id),
       student_ids,
     );
-
     res.status(200).json({
       message: "Students added to section successfully.",
       data: result,
     });
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
+    res.status(400).json({
       message: "Failed to add students to section.",
       error: error.message,
     });
   }
 };
-
 export const removeStudentsFromSection = async (req, res) => {
   try {
     const { section_id } = req.params;
     const { student_ids } = req.body;
-
     if (!Array.isArray(student_ids) || student_ids.length === 0) {
-      return res.status(400).json({
-        message: "Student IDs are required.",
-      });
+      return res.status(400).json({ message: "Student IDs are required." });
     }
-
     const result = await secm.removeStudentsFromSection(
       Number(section_id),
       student_ids.map(Number),
     );
-
-    res.status(200).json({
-      message: "Students removed from section.",
-      data: result,
-    });
+    res
+      .status(200)
+      .json({ message: "Students removed from section.", data: result });
   } catch (error) {
     console.error("Failed to remove students from section:", error);
-
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(400).json({ message: error.message });
   }
 };
-
 export const promoteStudents = async (req, res) => {
   try {
     const { student_ids, target_sy_grade_level_id } = req.body;
-
     const promoted_by = req.user.user_id;
-
     const result = await secm.promoteStudents(
       student_ids,
       Number(target_sy_grade_level_id),
       Number(promoted_by),
     );
-
-    res.status(200).json({
-      message: "Students promoted successfully.",
-      data: result,
-    });
+    res
+      .status(200)
+      .json({ message: "Students promoted successfully.", data: result });
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      message: "Failed to promote students.",
-      error: error.message,
-    });
+    res
+      .status(400)
+      .json({ message: "Failed to promote students.", error: error.message });
   }
 };
-
-export const getSectionNames = async (req, res) => {
+export const getSections = async (req, res) => {
   try {
-    const sectionNames = await secm.getSectionNames();
-
-    res.status(200).json({
-      data: sectionNames,
-    });
+    const sections = await secm.getSections();
+    res.status(200).json({ data: sections });
   } catch (error) {
-    console.error("Failed to get section names:", error);
-
-    res.status(500).json({
-      message: "Failed to get section names.",
-      error: error.message,
-    });
+    console.error("Error fetching sections:", error);
+    res.status(500).json({ message: error.message });
   }
 };
