@@ -15,6 +15,7 @@ import secm from "./routes/sectionRoute.js";
 import schedm from "./routes/schedulesRoutes.js";
 import uar from "./routes/userAccountsRoutes.js";
 import set from "./routes/settingsRoutes.js";
+import com from "./routes/communicationRoutes.js";
 dotenv.config();
 
 console.log("Starting server...");
@@ -37,6 +38,7 @@ app.use("/api/account-invitations", ai);
 app.use("/api/sections", secm);
 app.use("/api/schedules", schedm);
 app.use("/api/user-accounts", uar);
+app.use("/api/communications", com);
 app.use("/api/settings", set);
 
 const PORT = process.env.PORT || 5000;

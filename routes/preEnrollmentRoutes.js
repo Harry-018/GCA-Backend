@@ -66,7 +66,6 @@ router.post(
   authorize("admin"),
   enrollApplicant,
 );
-export default router;
 
 router.post(
   "/app-approval/:app_approval_id/reject",
@@ -80,3 +79,5 @@ router.patch(
   authorize("admin"),
   rescheduleApprovedApplicant,
 );
+
+export default router;
