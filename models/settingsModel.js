@@ -1,5 +1,135 @@
 import db from "../config/db.js";
 
+// =====================
+// SECTION NAMES
+// =====================
+
+export const getSectionNames = async () => {
+  return await db
+    .selectFrom("section_names")
+    .selectAll()
+    .where("section_name_status", "=", "active")
+    .orderBy("section_name", "asc")
+    .execute();
+};
+
+export const getArchivedSectionNames = async () => {
+  return await db
+    .selectFrom("section_names")
+    .selectAll()
+    .where("section_name_status", "=", "archived")
+    .orderBy("section_name", "asc")
+    .execute();
+};
+
+export const createSectionName = async (section_name) => {
+  const existing = await db
+    .selectFrom("section_names")
+    .select(["section_name_id", "section_name", "section_name_status"])
+    .where("section_name", "=", section_name)
+    .executeTakeFirst();
+  if (existing) {
+    if (existing.section_name_status === "archived") {
+      await db
+        .updateTable("section_names")
+        .set({ section_name_status: "active" })
+        .where("section_name_id", "=", existing.section_name_id)
+        .executeTakeFirst();
+      return {
+        section_name_id: Number(existing.section_name_id),
+        section_name: existing.section_name,
+        section_name_status: "active",
+        reactivated: true,
+      };
+    }
+    throw new Error("Section name already exists.");
+  }
+  const result = await db
+    .insertInto("section_names")
+    .values({ section_name, section_name_status: "active" })
+    .executeTakeFirst();
+  return {
+    section_name_id: Number(result.insertId),
+    section_name,
+    section_name_status: "active",
+  };
+};
+
+export const renameSectionName = async (section_name_id, section_name) => {
+  const existing = await db
+    .selectFrom("section_names")
+    .select(["section_name_id", "section_name", "section_name_status"])
+    .where("section_name_id", "=", section_name_id)
+    .executeTakeFirst();
+  if (!existing) {
+    throw new Error("Section name not found.");
+  }
+  const duplicate = await db
+    .selectFrom("section_names")
+    .select("section_name_id")
+    .where("section_name", "=", section_name)
+    .where("section_name_id", "!=", section_name_id)
+    .executeTakeFirst();
+  if (duplicate) {
+    throw new Error("Section name already exists.");
+  }
+  await db
+    .updateTable("section_names")
+    .set({ section_name })
+    .where("section_name_id", "=", section_name_id)
+    .executeTakeFirst();
+  return { section_name_id: Number(section_name_id), section_name };
+};
+
+export const archiveSectionName = async (section_name_id) => {
+  const existing = await db
+    .selectFrom("section_names")
+    .select(["section_name_id", "section_name", "section_name_status"])
+    .where("section_name_id", "=", section_name_id)
+    .executeTakeFirst();
+  if (!existing) {
+    throw new Error("Section name not found.");
+  }
+  if (existing.section_name_status === "archived") {
+    throw new Error("Section name is already archived.");
+  }
+  await db
+    .updateTable("section_names")
+    .set({ section_name_status: "archived" })
+    .where("section_name_id", "=", section_name_id)
+    .executeTakeFirst();
+  return {
+    section_name_id: Number(section_name_id),
+    section_name_status: "archived",
+  };
+};
+
+export const restoreSectionName = async (section_name_id) => {
+  const existing = await db
+    .selectFrom("section_names")
+    .select(["section_name_id", "section_name", "section_name_status"])
+    .where("section_name_id", "=", section_name_id)
+    .executeTakeFirst();
+  if (!existing) {
+    throw new Error("Section name not found.");
+  }
+  if (existing.section_name_status === "active") {
+    throw new Error("Section name is already active.");
+  }
+  await db
+    .updateTable("section_names")
+    .set({ section_name_status: "active" })
+    .where("section_name_id", "=", section_name_id)
+    .executeTakeFirst();
+  return {
+    section_name_id: Number(section_name_id),
+    section_name_status: "active",
+  };
+};
+
+// =====================
+// SUBJECTS
+// =====================
 export const getAllSubjects = async () => {
   return await db
     .selectFrom("subjects")

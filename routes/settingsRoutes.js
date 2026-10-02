@@ -4,6 +4,51 @@ import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+//sections
+router.get(
+  "/section-names",
+  authenticate,
+  authorize("admin"),
+  setc.getSectionNames,
+);
+
+router.get(
+  "/section-names/archived",
+  authenticate,
+  authorize("admin"),
+  setc.getArchivedSectionNames,
+);
+
+router.post(
+  "/section-names",
+  authenticate,
+  authorize("admin"),
+  setc.createSectionName,
+);
+
+router.patch(
+  "/section-names/:section_name_id",
+  authenticate,
+  authorize("admin"),
+  setc.renameSectionName,
+);
+
+router.patch(
+  "/section-names/:section_name_id/archive",
+  authenticate,
+  authorize("admin"),
+  setc.archiveSectionName,
+);
+
+router.patch(
+  "/section-names/:section_name_id/restore",
+  authenticate,
+  authorize("admin"),
+  setc.restoreSectionName,
+);
+
+//subjects
+
 router.get("/subjects", authenticate, authorize("admin"), setc.getAllSubjects);
 
 router.post("/subjects", authenticate, authorize("admin"), setc.createSubject);
