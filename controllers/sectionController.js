@@ -1,4 +1,5 @@
 import * as secm from "../models/sectionModel.js";
+
 export const getSectionGradeLevels = async (req, res) => {
   try {
     const result = await secm.getSectionGradeLevels();

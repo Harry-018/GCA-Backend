@@ -6,10 +6,21 @@ import db from "../config/db.js";
 
 export const getSectionNames = async () => {
   return await db
-    .selectFrom("section_names")
-    .selectAll()
-    .where("section_name_status", "=", "active")
-    .orderBy("section_name", "asc")
+    .selectFrom("section_names as sn")
+    .innerJoin(
+      "section_name_versions as snv",
+      "snv.section_name_id",
+      "sn.section_name_id",
+    )
+    .select([
+      "sn.section_name_id",
+      "snv.section_name_version_id",
+      "snv.section_name",
+      "sn.section_name_status",
+    ])
+    .where("sn.section_name_status", "=", "active")
+    .whereRef("snv.section_name", "=", "sn.section_name")
+    .orderBy("snv.section_name", "asc")
     .execute();
 };
 
@@ -23,62 +34,131 @@ export const getArchivedSectionNames = async () => {
 };
 
 export const createSectionName = async (section_name) => {
-  const existing = await db
-    .selectFrom("section_names")
-    .select(["section_name_id", "section_name", "section_name_status"])
-    .where("section_name", "=", section_name)
-    .executeTakeFirst();
-  if (existing) {
-    if (existing.section_name_status === "archived") {
-      await db
-        .updateTable("section_names")
-        .set({ section_name_status: "active" })
-        .where("section_name_id", "=", existing.section_name_id)
-        .executeTakeFirst();
-      return {
-        section_name_id: Number(existing.section_name_id),
-        section_name: existing.section_name,
-        section_name_status: "active",
-        reactivated: true,
-      };
-    }
-    throw new Error("Section name already exists.");
+  const name = section_name.trim();
+
+  if (!name) {
+    throw new Error("Section name is required.");
   }
-  const result = await db
-    .insertInto("section_names")
-    .values({ section_name, section_name_status: "active" })
-    .executeTakeFirst();
-  return {
-    section_name_id: Number(result.insertId),
-    section_name,
-    section_name_status: "active",
-  };
+
+  return await db.transaction().execute(async (trx) => {
+    const existing = await trx
+      .selectFrom("section_names")
+      .select(["section_name_id", "section_name", "section_name_status"])
+      .where("section_name", "=", name)
+      .executeTakeFirst();
+
+    if (existing) {
+      if (existing.section_name_status === "archived") {
+        await trx
+          .updateTable("section_names")
+          .set({ section_name_status: "active" })
+          .where("section_name_id", "=", existing.section_name_id)
+          .executeTakeFirst();
+
+        return {
+          section_name_id: Number(existing.section_name_id),
+          section_name: existing.section_name,
+          section_name_status: "active",
+          reactivated: true,
+        };
+      }
+
+      throw new Error("Section name already exists.");
+    }
+
+    const result = await trx
+      .insertInto("section_names")
+      .values({
+        section_name: name,
+        section_name_status: "active",
+      })
+      .executeTakeFirst();
+
+    const sectionNameId = Number(result.insertId);
+
+    const versionResult = await trx
+      .insertInto("section_name_versions")
+      .values({
+        section_name_id: sectionNameId,
+        section_name: name,
+      })
+      .executeTakeFirst();
+
+    return {
+      section_name_id: sectionNameId,
+      section_name_version_id: Number(versionResult.insertId),
+      section_name: name,
+      section_name_status: "active",
+    };
+  });
 };
 
 export const renameSectionName = async (section_name_id, section_name) => {
-  const existing = await db
-    .selectFrom("section_names")
-    .select(["section_name_id", "section_name", "section_name_status"])
-    .where("section_name_id", "=", section_name_id)
-    .executeTakeFirst();
-  if (!existing) {
-    throw new Error("Section name not found.");
+  const newName = section_name.trim();
+
+  if (!newName) {
+    throw new Error("Section name is required.");
   }
-  const duplicate = await db
-    .selectFrom("section_names")
-    .select("section_name_id")
-    .where("section_name", "=", section_name)
-    .where("section_name_id", "!=", section_name_id)
-    .executeTakeFirst();
-  if (duplicate) {
-    throw new Error("Section name already exists.");
-  }
-  await db
-    .updateTable("section_names")
-    .set({ section_name })
-    .where("section_name_id", "=", section_name_id)
-    .executeTakeFirst();
-  return { section_name_id: Number(section_name_id), section_name };
+
+  return await db.transaction().execute(async (trx) => {
+    const existing = await trx
+      .selectFrom("section_names")
+      .select(["section_name_id", "section_name", "section_name_status"])
+      .where("section_name_id", "=", section_name_id)
+      .executeTakeFirst();
+
+    if (!existing) {
+      throw new Error("Section name not found.");
+    }
+
+    const duplicate = await trx
+      .selectFrom("section_names")
+      .select("section_name_id")
+      .where("section_name", "=", newName)
+      .where("section_name_id", "!=", section_name_id)
+      .executeTakeFirst();
+
+    if (duplicate) {
+      throw new Error("Section name already exists.");
+    }
+
+    // Don't create a duplicate version if this name
+    // already exists in the version history.
+    const existingVersion = await trx
+      .selectFrom("section_name_versions")
+      .select("section_name_version_id")
+      .where("section_name_id", "=", section_name_id)
+      .where("section_name", "=", newName)
+      .executeTakeFirst();
+
+    let sectionNameVersionId = existingVersion?.section_name_version_id;
+
+    if (!existingVersion) {
+      const versionResult = await trx
+        .insertInto("section_name_versions")
+        .values({
+          section_name_id,
+          section_name: newName,
+        })
+        .executeTakeFirst();
+
+      sectionNameVersionId = Number(versionResult.insertId);
+    }
+
+    await trx
+      .updateTable("section_names")
+      .set({
+        section_name: newName,
+      })
+      .where("section_name_id", "=", section_name_id)
+      .executeTakeFirst();
+
+    return {
+      section_name_id: Number(section_name_id),
+      section_name_version_id: Number(sectionNameVersionId),
+      section_name: newName,
+    };
+  });
 };
 
 export const archiveSectionName = async (section_name_id) => {
@@ -87,17 +167,23 @@ export const archiveSectionName = async (section_name_id) => {
     .select(["section_name_id", "section_name", "section_name_status"])
     .where("section_name_id", "=", section_name_id)
     .executeTakeFirst();
+
   if (!existing) {
     throw new Error("Section name not found.");
   }
+
   if (existing.section_name_status === "archived") {
     throw new Error("Section name is already archived.");
   }
+
   await db
     .updateTable("section_names")
-    .set({ section_name_status: "archived" })
+    .set({
+      section_name_status: "archived",
+    })
     .where("section_name_id", "=", section_name_id)
     .executeTakeFirst();
+
   return {
     section_name_id: Number(section_name_id),
     section_name_status: "archived",
@@ -110,17 +196,23 @@ export const restoreSectionName = async (section_name_id) => {
     .select(["section_name_id", "section_name", "section_name_status"])
     .where("section_name_id", "=", section_name_id)
     .executeTakeFirst();
+
   if (!existing) {
     throw new Error("Section name not found.");
   }
+
   if (existing.section_name_status === "active") {
     throw new Error("Section name is already active.");
   }
+
   await db
     .updateTable("section_names")
-    .set({ section_name_status: "active" })
+    .set({
+      section_name_status: "active",
+    })
     .where("section_name_id", "=", section_name_id)
     .executeTakeFirst();
+
   return {
     section_name_id: Number(section_name_id),
     section_name_status: "active",

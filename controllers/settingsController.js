@@ -6,38 +6,58 @@ import * as setm from "../models/settingsModel.js";
 
 export const getSectionNames = async (req, res) => {
   try {
-    const sectionNames = await setm.getSectionNames();
-    res.status(200).json({ data: sectionNames });
+    const result = await setm.getSectionNames();
+
+    res.status(200).json({
+      data: result,
+    });
   } catch (error) {
-    console.error("Error fetching section names:", error);
-    res.status(500).json({ message: error.message });
+    console.error("Get section names error:", error);
+
+    res.status(500).json({
+      message: "Failed to fetch section names.",
+    });
   }
 };
 
 export const getArchivedSectionNames = async (req, res) => {
   try {
-    const sectionNames = await setm.getArchivedSectionNames();
-    res.status(200).json({ data: sectionNames });
+    const result = await setm.getArchivedSectionNames();
+
+    res.status(200).json({
+      data: result,
+    });
   } catch (error) {
-    console.error("Error fetching archived section names:", error);
-    res.status(500).json({ message: error.message });
+    console.error("Get archived section names error:", error);
+
+    res.status(500).json({
+      message: "Failed to fetch archived section names.",
+    });
   }
 };
 
 export const createSectionName = async (req, res) => {
   try {
     const { section_name } = req.body;
-    if (!section_name || !section_name.trim()) {
-      return res.status(400).json({ message: "section_name is required." });
+
+    if (!section_name?.trim()) {
+      return res.status(400).json({
+        message: "Section name is required.",
+      });
     }
-    const sectionName = await setm.createSectionName(section_name.trim());
+
+    const result = await setm.createSectionName(section_name);
+
     res.status(201).json({
       message: "Section name created successfully.",
-      data: sectionName,
+      data: result,
     });
   } catch (error) {
-    console.error("Error creating section name:", error);
-    res.status(400).json({ message: error.message });
+    console.error("Create section name error:", error);
+
+    res.status(400).json({
+      message: error.message,
+    });
   }
 };
 
@@ -45,48 +65,66 @@ export const renameSectionName = async (req, res) => {
   try {
     const { section_name_id } = req.params;
     const { section_name } = req.body;
-    if (!section_name || !section_name.trim()) {
-      return res.status(400).json({ message: "section_name is required." });
+
+    if (!section_name?.trim()) {
+      return res.status(400).json({
+        message: "Section name is required.",
+      });
     }
-    const sectionName = await setm.renameSectionName(
+
+    const result = await setm.renameSectionName(
       Number(section_name_id),
-      section_name.trim(),
+      section_name,
     );
+
     res.status(200).json({
       message: "Section name renamed successfully.",
-      data: sectionName,
+      data: result,
     });
   } catch (error) {
-    console.error("Error renaming section name:", error);
-    res.status(400).json({ message: error.message });
+    console.error("Rename section name error:", error);
+
+    res.status(400).json({
+      message: error.message,
+    });
   }
 };
 
 export const archiveSectionName = async (req, res) => {
   try {
     const { section_name_id } = req.params;
-    const sectionName = await setm.archiveSectionName(Number(section_name_id));
+
+    const result = await setm.archiveSectionName(Number(section_name_id));
+
     res.status(200).json({
       message: "Section name archived successfully.",
-      data: sectionName,
+      data: result,
     });
   } catch (error) {
-    console.error("Error archiving section name:", error);
-    res.status(400).json({ message: error.message });
+    console.error("Archive section name error:", error);
+
+    res.status(400).json({
+      message: error.message,
+    });
   }
 };
 
 export const restoreSectionName = async (req, res) => {
   try {
     const { section_name_id } = req.params;
-    const sectionName = await setm.restoreSectionName(Number(section_name_id));
+
+    const result = await setm.restoreSectionName(Number(section_name_id));
+
     res.status(200).json({
       message: "Section name restored successfully.",
-      data: sectionName,
+      data: result,
     });
   } catch (error) {
-    console.error("Error restoring section name:", error);
-    res.status(400).json({ message: error.message });
+    console.error("Restore section name error:", error);
+
+    res.status(400).json({
+      message: error.message,
+    });
   }
 };
 
