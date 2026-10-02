@@ -125,4 +125,18 @@ router.patch(
   setc.reactivateSkill,
 );
 
+router.get(
+  "/school-information",
+  authenticate,
+  authorize("admin"),
+  setc.getSchoolInformation,
+);
+
+router.put(
+  "/school-information",
+  authenticate,
+  authorize("admin"),
+  setc.updateSchoolInformation,
+);
+
 export default router;

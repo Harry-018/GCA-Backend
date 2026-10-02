@@ -1,6 +1,90 @@
 import db from "../config/db.js";
 
 // =====================
+// SCHOOL INFORMATION
+// =====================
+
+export const getSchoolInformation = async () => {
+  return await db
+    .selectFrom("school_information")
+    .select([
+      "school_info_id",
+      "school_name",
+      "school_logo",
+      "contact_number",
+      "school_email",
+      "school_address",
+    ])
+    .orderBy("school_info_id", "asc")
+    .executeTakeFirst();
+};
+
+export const updateSchoolInformation = async (data) => {
+  const {
+    school_name,
+    school_logo,
+    contact_number,
+    school_email,
+    school_address,
+  } = data;
+
+  if (!school_name?.trim()) {
+    throw new Error("School name is required.");
+  }
+
+  if (!school_logo?.trim()) {
+    throw new Error("School logo is required.");
+  }
+
+  if (!contact_number?.trim()) {
+    throw new Error("Contact number is required.");
+  }
+
+  if (!school_email?.trim()) {
+    throw new Error("School email is required.");
+  }
+
+  if (!school_address?.trim()) {
+    throw new Error("School address is required.");
+  }
+
+  const schoolInformation = await db
+    .selectFrom("school_information")
+    .select("school_info_id")
+    .orderBy("school_info_id", "asc")
+    .executeTakeFirst();
+
+  if (!schoolInformation) {
+    throw new Error("School information not found.");
+  }
+
+  const result = await db
+    .updateTable("school_information")
+    .set({
+      school_name: school_name.trim(),
+      school_logo: school_logo.trim(),
+      contact_number: contact_number.trim(),
+      school_email: school_email.trim(),
+      school_address: school_address.trim(),
+    })
+    .where("school_info_id", "=", schoolInformation.school_info_id)
+    .executeTakeFirst();
+
+  if (Number(result.numUpdatedRows) !== 1) {
+    throw new Error("Failed to update school information.");
+  }
+
+  return {
+    school_info_id: Number(schoolInformation.school_info_id),
+    school_name: school_name.trim(),
+    school_logo: school_logo.trim(),
+    contact_number: contact_number.trim(),
+    school_email: school_email.trim(),
+    school_address: school_address.trim(),
+  };
+};
+
+// =====================
 // SECTION NAMES
 // =====================
 
