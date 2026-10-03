@@ -100,6 +100,8 @@ export const sendTuitionReminder = async ({
   email,
   parentName,
   paymentOption,
+  templateSubject,
+  templateBody,
 }) => {
   if (!email) {
     throw new Error("Recipient email is required.");
@@ -109,16 +111,13 @@ export const sendTuitionReminder = async ({
     React.createElement(TuitionReminderEmail, {
       parentName,
       paymentOption,
+      templateSubject,
+      templateBody,
     }),
   );
 
-  const subject =
-    paymentOption === "Paylite"
-      ? "Tuition Reminder - Paylite"
-      : "Tuition Reminder - All-In";
-
   await brevo.transactionalEmails.sendTransacEmail({
-    subject,
+    subject: `${templateSubject} - ${paymentOption}`,
     htmlContent: html,
     sender,
     to: [{ email }],

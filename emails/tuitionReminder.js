@@ -8,10 +8,12 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-
-const TuitionReminderEmail = ({ parentName, paymentOption }) => {
-  const isPaylite = paymentOption === "Paylite";
-
+const TuitionReminderEmail = ({
+  parentName,
+  paymentOption,
+  templateSubject,
+  templateBody,
+}) => {
   return React.createElement(
     Html,
     null,
@@ -51,7 +53,7 @@ const TuitionReminderEmail = ({ parentName, paymentOption }) => {
               marginBottom: "24px",
             },
           },
-          "Tuition Payment Reminder",
+          templateSubject,
         ),
 
         React.createElement(
@@ -75,7 +77,7 @@ const TuitionReminderEmail = ({ parentName, paymentOption }) => {
               lineHeight: "1.6",
             },
           },
-          "This is a friendly reminder regarding your child's tuition payment for the current school year.",
+          templateBody,
         ),
 
         React.createElement(
@@ -101,20 +103,6 @@ const TuitionReminderEmail = ({ parentName, paymentOption }) => {
             React.createElement("strong", null, "Payment Option: "),
             paymentOption,
           ),
-        ),
-
-        React.createElement(
-          Text,
-          {
-            style: {
-              color: "#3b3b3b",
-              fontSize: "14px",
-              lineHeight: "1.6",
-            },
-          },
-          isPaylite
-            ? "Please remember to settle your scheduled Paylite payment according to the school's payment schedule."
-            : "Please remember to settle your All-In tuition payment according to the school's payment schedule.",
         ),
 
         React.createElement(

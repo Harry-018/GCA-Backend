@@ -255,8 +255,9 @@ export const sendTuitionReminderNotification = async (req, res) => {
         email: recipient.email,
         parentName: `${recipient.first_name} ${recipient.last_name}`,
         paymentOption: recipient.option_name,
+        templateSubject: template.subject,
+        templateBody: template.body,
       });
-
       sentCount++;
     }
 
