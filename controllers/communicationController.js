@@ -195,6 +195,19 @@ export const deleteAnnouncementInGradeLevel = async (req, res) => {
 // ================
 // notifications
 // ================
+export const getPaymentOptions = async (req, res) => {
+  try {
+    const paymentOptions = await comm.getPaymentOptions();
+
+    res.status(200).json(paymentOptions);
+  } catch (error) {
+    console.error("Get payment options error:", error);
+
+    res.status(500).json({
+      message: "Failed to get payment options.",
+    });
+  }
+};
 
 export const getNotifications = async (req, res) => {
   try {

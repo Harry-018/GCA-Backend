@@ -188,6 +188,13 @@ export const deleteAnnouncementInGradeLevel = async (announcement_id) => {
 // =====================
 // NOTIFICATIONS
 // =====================
+export const getPaymentOptions = async () => {
+  return await db
+    .selectFrom("payment_option")
+    .select(["payment_option_id", "option_name"])
+    .orderBy("payment_option_id", "asc")
+    .execute();
+};
 
 export const getNotifications = async () => {
   return await db

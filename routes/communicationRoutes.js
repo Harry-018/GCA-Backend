@@ -10,6 +10,13 @@ const router = express.Router();
 // notifications
 // =============
 
+router.get(
+  "/payment-options",
+  authenticate,
+  authorize("admin"),
+  comc.getPaymentOptions,
+);
+
 router.post(
   "/notifications/recipients",
   authenticate,
