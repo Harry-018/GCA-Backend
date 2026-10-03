@@ -1,7 +1,8 @@
 import React from "react";
 import { BrevoClient } from "@getbrevo/brevo";
 import { render } from "@react-email/render";
-import ApplicationApprovalEmail from "../emails/ApplicationApproval.js";
+import ApplicationApprovalEmail from "./ApplicationApproval.js";
+import TuitionReminderEmail from "./tuitionReminder.js";
 import { getEmailOfApprovedApplicant } from "../models/emailVerificationModel.js";
 
 const brevo = new BrevoClient({
@@ -92,5 +93,34 @@ export const sendAccountActivationEmail = async ({ email, token }) => {
         email,
       },
     ],
+  });
+};
+
+export const sendTuitionReminder = async ({
+  email,
+  parentName,
+  paymentOption,
+}) => {
+  if (!email) {
+    throw new Error("Recipient email is required.");
+  }
+
+  const html = await render(
+    React.createElement(TuitionReminderEmail, {
+      parentName,
+      paymentOption,
+    }),
+  );
+
+  const subject =
+    paymentOption === "Paylite"
+      ? "Tuition Reminder - Paylite"
+      : "Tuition Reminder - All-In";
+
+  await brevo.transactionalEmails.sendTransacEmail({
+    subject,
+    htmlContent: html,
+    sender,
+    to: [{ email }],
   });
 };

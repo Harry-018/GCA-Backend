@@ -1,3 +1,4 @@
+import { sendTuitionReminder } from "../emails/emailService.js";
 import * as comm from "../models/communicationModel.js";
 
 export const getGradeLevelWithAnnouncementCount = async (req, res) => {
@@ -187,6 +188,95 @@ export const deleteAnnouncementInGradeLevel = async (req, res) => {
 
     res.status(500).json({
       message: error.message,
+    });
+  }
+};
+
+// ================
+// notifications
+// ================
+
+export const getNotifications = async (req, res) => {
+  try {
+    const notifications = await comm.getNotifications();
+
+    res.status(200).json(notifications);
+  } catch (error) {
+    console.error("Get notifications error:", error);
+
+    res.status(500).json({
+      message: "Failed to get notifications.",
+    });
+  }
+};
+
+export const sendTuitionReminderNotification = async (req, res) => {
+  try {
+    const { payment_option_id } = req.body;
+
+    if (!payment_option_id) {
+      return res.status(400).json({
+        message: "Payment option is required.",
+      });
+    }
+
+    const recipients = await comm.getTuitionReminderRecipients(
+      Number(payment_option_id),
+    );
+
+    if (recipients.length === 0) {
+      return res.status(404).json({
+        message: "No eligible parents found for this payment option.",
+      });
+    }
+
+    const uniqueRecipients = Array.from(
+      new Map(
+        recipients.map((recipient) => [
+          recipient.email.toLowerCase().trim(),
+          recipient,
+        ]),
+      ).values(),
+    );
+
+    const template =
+      await comm.getNotificationTemplateByPurpose("Tuition Reminder");
+
+    if (!template) {
+      return res.status(500).json({
+        message: "Tuition Reminder notification template not found.",
+      });
+    }
+
+    let sentCount = 0;
+
+    for (const recipient of uniqueRecipients) {
+      await sendTuitionReminder({
+        email: recipient.email,
+        parentName: `${recipient.first_name} ${recipient.last_name}`,
+        paymentOption: recipient.option_name,
+      });
+
+      sentCount++;
+    }
+
+    await comm.createNotification({
+      template_id: template.template_id,
+      audience: "parent",
+      created_by: req.user.user_id,
+      sent_at: new Date(),
+      payment_option_id: Number(payment_option_id),
+    });
+
+    res.status(200).json({
+      message: "Tuition reminders sent successfully.",
+      sentCount,
+    });
+  } catch (error) {
+    console.error("Send tuition reminder error:", error);
+
+    res.status(500).json({
+      message: "Failed to send tuition reminders.",
     });
   }
 };

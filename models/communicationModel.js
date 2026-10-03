@@ -184,3 +184,140 @@ export const deleteAnnouncementInGradeLevel = async (announcement_id) => {
     announcement_id: Number(announcement_id),
   };
 };
+
+// =====================
+// NOTIFICATIONS
+// =====================
+
+export const getNotifications = async () => {
+  return await db
+    .selectFrom("notifications as n")
+    .innerJoin("notification_template as nt", "n.template_id", "nt.template_id")
+    .innerJoin("user_accounts as ua", "n.created_by", "ua.user_id")
+    .leftJoin(
+      "payment_option as po",
+      "n.payment_option_id",
+      "po.payment_option_id",
+    )
+    .select([
+      "n.notification_id",
+      "nt.purpose_name",
+      "nt.subject",
+      "n.audience",
+      "n.sent_at",
+      "po.option_name as payment_option",
+      "ua.first_name as created_by_first_name",
+      "ua.last_name as created_by_last_name",
+    ])
+    .orderBy("n.sent_at", "desc")
+    .execute();
+};
+
+export const createNotification = async ({
+  template_id,
+  audience,
+  created_by,
+  sent_at,
+  payment_option_id,
+}) => {
+  return await db
+    .insertInto("notifications")
+    .values({
+      template_id,
+      audience,
+      created_by,
+      sent_at,
+      payment_option_id,
+    })
+    .executeTakeFirst();
+};
+
+export const getNotificationTemplateByPurpose = async (purpose_name) => {
+  return await db
+    .selectFrom("notification_template")
+    .select(["template_id", "purpose_name", "subject", "body"])
+    .where("purpose_name", "=", purpose_name)
+    .executeTakeFirst();
+};
+
+export const getTuitionReminderRecipients = async (payment_option_id) => {
+  return await db
+    .selectFrom("students as s")
+
+    // Current enrollment
+    .innerJoin("enrollment as e", "s.stu_id", "e.stu_id")
+
+    .innerJoin(
+      "schoolyears_gradelevels as sgl",
+      "e.sy_grade_level_id",
+      "sgl.sy_grade_level_id",
+    )
+
+    .innerJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
+
+    // Submission / approved application
+    .innerJoin("submissions as sub", "s.submission_id", "sub.submission_id")
+
+    .innerJoin(
+      "app_approval as aa",
+      "sub.app_approval_id",
+      "aa.app_approval_id",
+    )
+
+    .innerJoin("applications as a", "aa.application_id", "a.application_id")
+
+    // Payment option selected by applicant
+    .innerJoin(
+      "gradelevel_paymentoptions as glpo",
+      "a.gradelevel_paymentoption_id",
+      "glpo.gradelevel_paymentoption_id",
+    )
+
+    .innerJoin(
+      "payment_option as po",
+      "glpo.payment_option_id",
+      "po.payment_option_id",
+    )
+
+    // Parent
+    .innerJoin(
+      "applicant_parent as ap",
+      "a.application_id",
+      "ap.application_id",
+    )
+
+    .innerJoin("parent_info as pi", "ap.parent_info_id", "pi.parent_info_id")
+
+    .select([
+      "pi.parent_info_id",
+      "pi.first_name",
+      "pi.last_name",
+      "pi.email",
+
+      "s.stu_id",
+      "s.stu_num",
+
+      "po.payment_option_id",
+      "po.option_name",
+    ])
+
+    .where("sy.sy_status", "=", "active")
+    .where("sgl.sy_gradelevel_status", "=", "active")
+
+    .where("e.enr_status", "=", "enrolled")
+    .where("s.stu_status", "=", "active")
+
+    .where("sub.sub_status", "=", "confirmed")
+    .where("aa.approval_status", "=", "approved")
+    .where("a.application_status", "=", "approved")
+
+    .where("ap.will_receive_account", "=", 1)
+
+    .where("po.payment_option_id", "=", Number(payment_option_id))
+
+    .where("pi.email", "is not", null)
+    .where("pi.email", "!=", "")
+
+    .orderBy("pi.last_name", "asc")
+    .execute();
+};

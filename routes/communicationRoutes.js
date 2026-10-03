@@ -6,6 +6,24 @@ import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+// =============
+// notifications
+// =============
+
+router.post(
+  "/notifications/recipients",
+  authenticate,
+  authorize("admin"),
+  comc.sendTuitionReminderNotification,
+);
+
+router.get(
+  "/notifications",
+  authenticate,
+  authorize("admin"),
+  comc.getNotifications,
+);
+
 // =====================
 // ANNOUNCEMENTS
 // =====================
@@ -51,3 +69,5 @@ router.delete(
 );
 
 export default router;
+
+// it now sends the email. lets connect it to the frontend here are the files:
