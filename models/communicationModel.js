@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import { sql } from "kysely";
 
 // =====================
 // GRADE LEVELS
@@ -68,7 +69,6 @@ export const createAnnouncementInGradeLevel = async (
   data,
   user_id,
 ) => {
-  // Make sure the grade level exists and is active
   const gradeLevel = await db
     .selectFrom("schoolyears_gradelevels")
     .select("sy_grade_level_id")
@@ -80,7 +80,6 @@ export const createAnnouncementInGradeLevel = async (
     throw new Error("Grade level is not found or is not active.");
   }
 
-  // Make sure the authenticated user exists
   const user = await db
     .selectFrom("user_accounts")
     .select("user_id")
@@ -240,11 +239,11 @@ export const createNotification = async ({
     .executeTakeFirst();
 };
 
-export const getNotificationTemplateByPurpose = async (purpose_name) => {
+export const getNotificationTemplateById = async (template_id) => {
   return await db
     .selectFrom("notification_template")
     .select(["template_id", "purpose_name", "subject", "body"])
-    .where("purpose_name", "=", purpose_name)
+    .where("template_id", "=", template_id)
     .executeTakeFirst();
 };
 
@@ -256,84 +255,141 @@ export const getNotificationTemplates = async () => {
     .execute();
 };
 
+// =====================
+// PARENT RECIPIENTS
+// =====================
+
 export const getTuitionReminderRecipients = async (payment_option_id) => {
   return await db
     .selectFrom("students as s")
-
-    // Current enrollment
     .innerJoin("enrollment as e", "s.stu_id", "e.stu_id")
-
     .innerJoin(
       "schoolyears_gradelevels as sgl",
       "e.sy_grade_level_id",
       "sgl.sy_grade_level_id",
     )
-
     .innerJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
-
-    // Submission / approved application
     .innerJoin("submissions as sub", "s.submission_id", "sub.submission_id")
-
     .innerJoin(
       "app_approval as aa",
       "sub.app_approval_id",
       "aa.app_approval_id",
     )
-
     .innerJoin("applications as a", "aa.application_id", "a.application_id")
-
-    // Payment option selected by applicant
     .innerJoin(
       "gradelevel_paymentoptions as glpo",
       "a.gradelevel_paymentoption_id",
       "glpo.gradelevel_paymentoption_id",
     )
-
     .innerJoin(
       "payment_option as po",
       "glpo.payment_option_id",
       "po.payment_option_id",
     )
-
-    // Parent
     .innerJoin(
       "applicant_parent as ap",
       "a.application_id",
       "ap.application_id",
     )
-
     .innerJoin("parent_info as pi", "ap.parent_info_id", "pi.parent_info_id")
-
     .select([
       "pi.parent_info_id",
       "pi.first_name",
       "pi.last_name",
       "pi.email",
-
       "s.stu_id",
       "s.stu_num",
-
       "po.payment_option_id",
       "po.option_name",
     ])
-
     .where("sy.sy_status", "=", "active")
     .where("sgl.sy_gradelevel_status", "=", "active")
-
     .where("e.enr_status", "=", "enrolled")
     .where("s.stu_status", "=", "active")
-
     .where("sub.sub_status", "=", "confirmed")
     .where("aa.approval_status", "=", "approved")
     .where("a.application_status", "=", "approved")
-
     .where("ap.will_receive_account", "=", 1)
-
     .where("po.payment_option_id", "=", Number(payment_option_id))
-
     .where("pi.email", "is not", null)
     .where("pi.email", "!=", "")
-
     .orderBy("pi.last_name", "asc")
     .execute();
+};
+
+// =====================
+// TEACHER RECIPIENTS
+// =====================
+
+export const getTeacherNotificationRecipients = async () => {
+  return await db
+    .selectFrom("teachers as t")
+    .innerJoin("teacher_info as ti", "t.teacher_info_id", "ti.teacher_info_id")
+    .innerJoin("user_accounts as ua", "ti.user_id", "ua.user_id")
+    .select([
+      "ti.teacher_info_id",
+      "ti.first_name",
+      "ti.last_name",
+      "ua.email",
+      "t.teacher_id",
+      "t.teacher_num",
+    ])
+    .where("t.teacher_status", "=", "active")
+    .where("ua.role", "=", "teacher")
+    .where("ua.account_status", "=", "active")
+    .where("ua.email", "is not", null)
+    .where("ua.email", "!=", "")
+    .orderBy("ti.last_name", "asc")
+    .execute();
+};
+
+// =====================
+// GET NOTIFICATION RECIPIENTS
+// =====================
+
+export const getNotificationRecipients = async ({
+  audience,
+  payment_option_id,
+}) => {
+  switch (audience) {
+    case "parent":
+      return await getTuitionReminderRecipients(payment_option_id);
+
+    case "teacher":
+      return await getTeacherNotificationRecipients();
+
+    default:
+      throw new Error(`Unsupported notification audience: ${audience}`);
+  }
+};
+
+// =====================
+// GET NOTIFICATION AUDIENCES
+// =====================
+
+export const getNotificationAudiences = async () => {
+  const result = await sql`
+    SELECT COLUMN_TYPE
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'notifications'
+      AND COLUMN_NAME = 'audience'
+  `.execute(db);
+
+  const columnType = result.rows[0]?.COLUMN_TYPE;
+
+  if (!columnType) {
+    return [];
+  }
+
+  const values = columnType
+    .replace(/^enum\(/i, "")
+    .replace(/\)$/i, "")
+    .split(",")
+    .map((value) => value.replace(/^'|'$/g, "").trim());
+
+  return values.map((value) => ({
+    value,
+    label: `${value.charAt(0).toUpperCase()}${value.slice(1)}s`,
+  }));
 };

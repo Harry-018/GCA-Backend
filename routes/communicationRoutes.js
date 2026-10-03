@@ -1,14 +1,21 @@
 import express from "express";
 
 import * as comc from "../controllers/communicationController.js";
-
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// =============
-// notifications
-// =============
+// =====================
+// NOTIFICATIONS
+// =====================
+
+router.get(
+  "/notification-audiences",
+  authenticate,
+  authorize("admin"),
+  comc.getNotificationAudiences,
+);
+
 router.get(
   "/notification-templates",
   authenticate,
@@ -23,13 +30,6 @@ router.get(
   comc.getPaymentOptions,
 );
 
-router.post(
-  "/notifications/recipients",
-  authenticate,
-  authorize("admin"),
-  comc.sendTuitionReminderNotification,
-);
-
 router.get(
   "/notifications",
   authenticate,
@@ -37,11 +37,17 @@ router.get(
   comc.getNotifications,
 );
 
+router.post(
+  "/notifications/send",
+  authenticate,
+  authorize("admin"),
+  comc.sendNotification,
+);
+
 // =====================
 // ANNOUNCEMENTS
 // =====================
 
-// Get active grade levels with announcement counts
 router.get(
   "/",
   authenticate,
@@ -49,7 +55,6 @@ router.get(
   comc.getGradeLevelWithAnnouncementCount,
 );
 
-// Get announcements for a grade level
 router.get(
   "/:sy_grade_level_id",
   authenticate,
@@ -57,7 +62,6 @@ router.get(
   comc.getAnnouncementsByGradeLevel,
 );
 
-// Create announcement
 router.post(
   "/:sy_grade_level_id",
   authenticate,
@@ -65,7 +69,6 @@ router.post(
   comc.createAnnouncementInGradeLevel,
 );
 
-// Edit announcement
 router.put(
   "/:sy_grade_level_id/:announcement_id",
   authenticate,
@@ -73,7 +76,6 @@ router.put(
   comc.editAnnouncementInGradeLevel,
 );
 
-// Delete announcement
 router.delete(
   "/:sy_grade_level_id/:announcement_id",
   authenticate,
@@ -82,5 +84,3 @@ router.delete(
 );
 
 export default router;
-
-// it now sends the email. lets connect it to the frontend here are the files:
