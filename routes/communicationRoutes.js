@@ -9,6 +9,12 @@ const router = express.Router();
 // =============
 // notifications
 // =============
+router.get(
+  "/notification-templates",
+  authenticate,
+  authorize("admin"),
+  comc.getNotificationTemplates,
+);
 
 router.get(
   "/payment-options",

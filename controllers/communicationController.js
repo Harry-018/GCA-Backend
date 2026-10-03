@@ -209,6 +209,20 @@ export const getPaymentOptions = async (req, res) => {
   }
 };
 
+export const getNotificationTemplates = async (req, res) => {
+  try {
+    const templates = await comm.getNotificationTemplates();
+
+    res.status(200).json(templates);
+  } catch (error) {
+    console.error("Get notification templates error:", error);
+
+    res.status(500).json({
+      message: "Failed to get notification templates.",
+    });
+  }
+};
+
 export const getNotifications = async (req, res) => {
   try {
     const notifications = await comm.getNotifications();

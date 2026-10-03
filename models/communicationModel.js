@@ -188,6 +188,7 @@ export const deleteAnnouncementInGradeLevel = async (announcement_id) => {
 // =====================
 // NOTIFICATIONS
 // =====================
+
 export const getPaymentOptions = async () => {
   return await db
     .selectFrom("payment_option")
@@ -245,6 +246,14 @@ export const getNotificationTemplateByPurpose = async (purpose_name) => {
     .select(["template_id", "purpose_name", "subject", "body"])
     .where("purpose_name", "=", purpose_name)
     .executeTakeFirst();
+};
+
+export const getNotificationTemplates = async () => {
+  return await db
+    .selectFrom("notification_template")
+    .select(["template_id", "purpose_name", "subject"])
+    .orderBy("template_id", "asc")
+    .execute();
 };
 
 export const getTuitionReminderRecipients = async (payment_option_id) => {
