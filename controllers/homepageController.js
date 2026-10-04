@@ -169,14 +169,29 @@ export const getGradeLevels = async (req, res) => {
 
 export const addAcademicProgram = async (req, res) => {
   try {
-    const program = await hmm.addAcademicPrograms(req.body);
+    let imageUrl;
 
-    res.status(201).json({
-      message: "Academic program added successfully",
-      data: program,
+    if (req.file) {
+      const result = await uploadImage(
+        req.file.buffer,
+        "gca/homepage/academic-programs",
+      );
+
+      imageUrl = result.secure_url;
+    }
+
+    const result = await hmm.addAcademicPrograms({
+      grade_level_id: req.body.grade_level_id,
+      image_url: imageUrl,
+      min_age: req.body.min_age,
+      max_age: req.body.max_age,
+      description: req.body.description,
     });
+
+    res.status(201).json(result);
   } catch (error) {
     console.error("Add academic program error:", error);
+
     res.status(500).json({
       message: "Failed to add academic program",
     });
@@ -185,19 +200,29 @@ export const addAcademicProgram = async (req, res) => {
 
 export const editAcademicProgram = async (req, res) => {
   try {
-    const { program_id } = req.params;
+    let imageUrl;
 
-    const program = await hmm.editAcademicPrograms(
-      Number(program_id),
-      req.body,
-    );
+    if (req.file) {
+      const result = await uploadImage(
+        req.file.buffer,
+        "gca/homepage/academic-programs",
+      );
 
-    res.status(200).json({
-      message: "Academic program updated successfully",
-      data: program,
+      imageUrl = result.secure_url;
+    }
+
+    const result = await hmm.editAcademicPrograms(req.params.program_id, {
+      grade_level_id: req.body.grade_level_id,
+      image_url: imageUrl,
+      min_age: req.body.min_age,
+      max_age: req.body.max_age,
+      description: req.body.description,
     });
+
+    res.status(200).json(result);
   } catch (error) {
     console.error("Edit academic program error:", error);
+
     res.status(500).json({
       message: "Failed to update academic program",
     });
@@ -206,16 +231,12 @@ export const editAcademicProgram = async (req, res) => {
 
 export const deleteAcademicProgram = async (req, res) => {
   try {
-    const { program_id } = req.params;
+    const result = await hmm.deleteAcademicProgram(req.params.program_id);
 
-    const program = await hmm.deleteAcademicProgram(Number(program_id));
-
-    res.status(200).json({
-      message: "Academic program deleted successfully",
-      data: program,
-    });
+    res.status(200).json(result);
   } catch (error) {
     console.error("Delete academic program error:", error);
+
     res.status(500).json({
       message: "Failed to delete academic program",
     });

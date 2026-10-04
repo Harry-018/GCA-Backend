@@ -126,7 +126,7 @@ export const getGradeLevels = async () => {
 };
 
 export const addAcademicPrograms = async (data) => {
-  const programs = await db
+  await db
     .insertInto("academic_programs")
     .values({
       grade_level_id: data.grade_level_id,
@@ -135,31 +135,45 @@ export const addAcademicPrograms = async (data) => {
       max_age: data.max_age,
       description: data.description,
     })
-    .executeTakeFirst();
-  return programs;
+    .execute();
+
+  return {
+    message: "Academic program added successfully",
+  };
 };
 
 export const editAcademicPrograms = async (program_id, data) => {
-  const programs = await db
+  const updateData = {
+    grade_level_id: data.grade_level_id,
+    min_age: data.min_age,
+    max_age: data.max_age,
+    description: data.description,
+  };
+
+  if (data.image_url) {
+    updateData.image_url = data.image_url;
+  }
+
+  await db
     .updateTable("academic_programs")
-    .set({
-      grade_level_id: data.grade_level_id,
-      image_url: data.image_url,
-      min_age: data.min_age,
-      max_age: data.max_age,
-      description: data.description,
-    })
+    .set(updateData)
     .where("program_id", "=", program_id)
-    .executeTakeFirst();
-  return programs;
+    .execute();
+
+  return {
+    message: "Academic program updated successfully",
+  };
 };
 
 export const deleteAcademicProgram = async (program_id) => {
-  const programs = await db
+  await db
     .deleteFrom("academic_programs")
     .where("program_id", "=", program_id)
-    .executeTakeFirst();
-  return programs;
+    .execute();
+
+  return {
+    message: "Academic program deleted successfully",
+  };
 };
 
 // ================== mission vision

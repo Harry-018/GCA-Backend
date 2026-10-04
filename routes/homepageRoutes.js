@@ -1,5 +1,5 @@
 import express from "express";
-import * as hmc from "../controllers/homepageManagementController.js";
+import * as hmc from "../controllers/homepageController.js";
 import { upload } from "../middleware/uploadMiddleware.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
@@ -31,11 +31,31 @@ router.delete("/reasons/:reason_id", hmc.deleteReason);
 // ==================== Academic Programs ====================
 
 router.get("/academic-programs", hmc.getAcademicPrograms);
+
 router.get("/grade-levels", hmc.getGradeLevels);
 
-router.post("/academic-programs", hmc.addAcademicProgram);
-router.patch("/academic-programs/:program_id", hmc.editAcademicProgram);
-router.delete("/academic-programs/:program_id", hmc.deleteAcademicProgram);
+router.post(
+  "/academic-programs",
+  authenticate,
+  authorize("admin"),
+  upload.single("image"),
+  hmc.addAcademicProgram,
+);
+
+router.patch(
+  "/academic-programs/:program_id",
+  authenticate,
+  authorize("admin"),
+  upload.single("image"),
+  hmc.editAcademicProgram,
+);
+
+router.delete(
+  "/academic-programs/:program_id",
+  authenticate,
+  authorize("admin"),
+  hmc.deleteAcademicProgram,
+);
 
 // ==================== Mission Vision ====================
 
