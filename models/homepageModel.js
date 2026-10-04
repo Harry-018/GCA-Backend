@@ -34,7 +34,8 @@ export const editBanner = async (data) => {
       banner_image: data.banner_image,
       banner_quote: data.banner_quote,
     })
-    .where("banner_id", "=", 1);
+    .where("banner_id", "=", 1)
+    .executeTakeFirst();
 
   return banner;
 };
