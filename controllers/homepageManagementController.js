@@ -1,3 +1,4 @@
+import { uploadImage } from "../middleware/cloudinaryMiddleware.js";
 import * as hmm from "../models/homepageModel.js";
 
 // ==================== Banner ====================
@@ -17,20 +18,29 @@ export const getBanner = async (req, res) => {
 
 export const editBanner = async (req, res) => {
   try {
-    const banner = await hmm.editBanner(req.body);
+    let bannerImage;
 
-    res.status(200).json({
-      message: "Banner updated successfully",
-      data: banner,
+    if (req.file) {
+      const result = await uploadImage(req.file.buffer, "gca/homepage/banner");
+
+      bannerImage = result.secure_url;
+    }
+
+    const result = await hmm.editBanner({
+      banner_title: req.body.banner_title,
+      banner_quote: req.body.banner_quote,
+      banner_image: bannerImage,
     });
+
+    res.status(200).json(result);
   } catch (error) {
     console.error("Edit banner error:", error);
+
     res.status(500).json({
-      message: "Failed to update banner",
+      message: "Failed to update banner.",
     });
   }
 };
-
 // ==================== Video ====================
 
 export const getVideo = async (req, res) => {

@@ -27,17 +27,24 @@ export const getBanner = async () => {
 };
 
 export const editBanner = async (data) => {
-  const banner = await db
-    .updateTable("banner")
-    .set({
-      banner_title: data.banner_title,
-      banner_image: data.banner_image,
-      banner_quote: data.banner_quote,
-    })
-    .where("banner_id", "=", 1)
-    .executeTakeFirst();
+  const updateData = {
+    banner_title: data.banner_title,
+    banner_quote: data.banner_quote,
+  };
 
-  return banner;
+  if (data.banner_image) {
+    updateData.banner_image = data.banner_image;
+  }
+
+  await db
+    .updateTable("banner")
+    .set(updateData)
+    .where("banner_id", "=", 1)
+    .execute();
+
+  return {
+    message: "Banner updated successfully",
+  };
 };
 
 // ============ video

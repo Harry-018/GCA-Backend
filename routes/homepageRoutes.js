@@ -1,5 +1,6 @@
 import express from "express";
 import * as hmc from "../controllers/homepageManagementController.js";
+import { upload } from "../middleware/uploadMiddleware.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -7,7 +8,13 @@ const router = express.Router();
 // ==================== Banner ====================
 
 router.get("/banner", hmc.getBanner);
-router.patch("/banner", hmc.editBanner);
+router.patch(
+  "/banner",
+  authenticate,
+  authorize("admin"),
+  upload.single("banner_image"),
+  hmc.editBanner,
+);
 
 // ==================== Video ====================
 
