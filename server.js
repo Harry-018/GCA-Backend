@@ -17,7 +17,7 @@ import uar from "./routes/userAccountsRoutes.js";
 import set from "./routes/settingsRoutes.js";
 import com from "./routes/communicationRoutes.js";
 import hm from "./routes/homepageRoutes.js";
-import trc from "./routes/transportationRoutes.js";
+import trr from "./routes/transportationRoutes.js";
 dotenv.config();
 
 console.log("Starting server...");
@@ -43,7 +43,7 @@ app.use("/api/user-accounts", uar);
 app.use("/api/communications", com);
 app.use("/api/settings", set);
 app.use("/api/homepage", hm);
-app.use("/api/transportation", trc);
+app.use("/api/transportation", trr);
 
 const PORT = process.env.PORT || 5000;
 
