@@ -89,13 +89,14 @@ export const editVideo = async (req, res) => {
 
 // ==================== Choose Us ====================
 
-export const getReason = async (req, res) => {
+export const getReasons = async (req, res) => {
   try {
-    const reason = await hmm.getReasons();
+    const reasons = await hmm.getReasons();
 
-    res.status(200).json(reason);
+    res.status(200).json(reasons);
   } catch (error) {
     console.error("Get reasons error:", error);
+
     res.status(500).json({
       message: "Failed to get reasons",
     });

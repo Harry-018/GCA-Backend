@@ -30,10 +30,20 @@ router.patch(
 
 // ==================== Choose Us ====================
 
-router.get("/reasons", hmc.getReason);
-router.post("/reasons", hmc.addReason);
-router.patch("/reasons/:reason_id", hmc.editReason);
-router.delete("/reasons/:reason_id", hmc.deleteReason);
+router.get("/reasons", hmc.getReasons);
+router.post("/reasons", authenticate, authorize("admin"), hmc.addReason);
+router.patch(
+  "/reasons/:reason_id",
+  authenticate,
+  authorize("admin"),
+  hmc.editReason,
+);
+router.delete(
+  "/reasons/:reason_id",
+  authenticate,
+  authorize("admin"),
+  hmc.deleteReason,
+);
 
 // ==================== Academic Programs ====================
 

@@ -77,15 +77,23 @@ export const editVideo = async (data) => {
 // ============= choose us
 
 export const getReasons = async () => {
-  const reason = await db.selectFrom("choose_us").selectAll().execute();
-  return reason;
+  const reasons = await db
+    .selectFrom("choose_us")
+    .selectAll()
+    .orderBy("reason_id", "asc")
+    .execute();
+
+  return reasons;
 };
 
 export const addReason = async (data) => {
   const reason = await db
     .insertInto("choose_us")
-    .values({ reasons: data.reasons })
+    .values({
+      reasons: data.reasons,
+    })
     .execute();
+
   return reason;
 };
 
@@ -97,6 +105,7 @@ export const editReason = async (reason_id, data) => {
     })
     .where("reason_id", "=", reason_id)
     .executeTakeFirst();
+
   return reason;
 };
 
@@ -105,6 +114,7 @@ export const deleteReason = async (reason_id) => {
     .deleteFrom("choose_us")
     .where("reason_id", "=", reason_id)
     .executeTakeFirst();
+
   return reason;
 };
 
