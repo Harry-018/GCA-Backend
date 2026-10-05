@@ -8,25 +8,20 @@ const router = express.Router();
 // GET TRANSPORTATION
 // ==============================
 
-router.get("/transportation", tranc.getTransportation);
+router.get("/", tranc.getTransportation);
 
 // ==============================
 // ADD TRANSPORTATION
 // ==============================
 
-router.post(
-  "/transportation",
-  authenticate,
-  authorize("admin"),
-  tranc.addTransportation,
-);
+router.post("/", authenticate, authorize("admin"), tranc.addTransportation);
 
 // ==============================
 // EDIT TRANSPORTATION
 // ==============================
 
 router.patch(
-  "/transportation/:transportation_id",
+  "/:transportation_id",
   authenticate,
   authorize("admin"),
   tranc.editTransportation,
@@ -37,7 +32,7 @@ router.patch(
 // ==============================
 
 router.delete(
-  "/transportation/:transportation_id",
+  "/:transportation_id/delete",
   authenticate,
   authorize("admin"),
   tranc.deleteTransportation,
