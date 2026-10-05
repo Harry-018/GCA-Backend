@@ -1,4 +1,4 @@
-import * as tranm from "../models/transportationModel.js";
+import * as tranm from "../models/transporationModel.js";
 // ==============================
 // GET TRANSPORTATION
 // ==============================
