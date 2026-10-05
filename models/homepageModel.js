@@ -87,18 +87,17 @@ export const getReasons = async () => {
 };
 
 export const addReason = async (data) => {
-  const reason = await db
+  await db
     .insertInto("choose_us")
     .values({
       reasons: data.reasons,
     })
     .execute();
 
-  return reason;
+  return true;
 };
-
 export const editReason = async (reason_id, data) => {
-  const reason = await db
+  await db
     .updateTable("choose_us")
     .set({
       reasons: data.reasons,
@@ -106,16 +105,16 @@ export const editReason = async (reason_id, data) => {
     .where("reason_id", "=", reason_id)
     .executeTakeFirst();
 
-  return reason;
+  return true;
 };
 
 export const deleteReason = async (reason_id) => {
-  const reason = await db
+  await db
     .deleteFrom("choose_us")
     .where("reason_id", "=", reason_id)
     .executeTakeFirst();
 
-  return reason;
+  return true;
 };
 
 // ================== academic programs
