@@ -201,7 +201,7 @@ export const getMissionVision = async () => {
 };
 
 export const editMissionVision = async (data) => {
-  const missvis = await db
+  await db
     .updateTable("mission_vision")
     .set({
       mission_title: data.mission_title,
@@ -211,7 +211,9 @@ export const editMissionVision = async (data) => {
     })
     .where("mission_vision_id", "=", 1)
     .executeTakeFirst();
-  return missvis;
+  return {
+    message: "mission and vision updated successfully",
+  };
 };
 
 // ================== children activities

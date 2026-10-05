@@ -82,7 +82,12 @@ router.delete(
 // ==================== Mission Vision ====================
 
 router.get("/mission-vision", hmc.getMissionVision);
-router.patch("/mission-vision", hmc.editMissionVision);
+router.patch(
+  "/mission-vision",
+  authenticate,
+  authorize("admin"),
+  hmc.editMissionVision,
+);
 
 // ==================== Children Activities ====================
 
