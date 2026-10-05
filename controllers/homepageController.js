@@ -350,7 +350,7 @@ export const editChildrenActivity = async (req, res) => {
     const result = await hmm.editChildrenActivity(req.params.activity_id, {
       activity_title: req.body.activity_title,
       activity_description: req.body.activity_description,
-      activity_image: activityImage,
+      activityImage: activityImage,
     });
 
     res.status(200).json(result);
