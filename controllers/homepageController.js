@@ -1,4 +1,7 @@
-import { uploadImage } from "../middleware/cloudinaryMiddleware.js";
+import {
+  uploadImage,
+  uploadVideo,
+} from "../middleware/cloudinaryMiddleware.js";
 import * as hmm from "../models/homepageModel.js";
 
 // ==================== Banner ====================
@@ -58,7 +61,18 @@ export const getVideo = async (req, res) => {
 
 export const editVideo = async (req, res) => {
   try {
-    const video = await hmm.editVideo(req.body);
+    let videoUrl;
+
+    if (req.file) {
+      const result = await uploadVideo(req.file.buffer, "gca/homepage/video");
+
+      videoUrl = result.secure_url;
+    }
+
+    const video = await hmm.editVideo({
+      video_title: req.body.video_title,
+      video_url: videoUrl,
+    });
 
     res.status(200).json({
       message: "Video updated successfully",
@@ -66,6 +80,7 @@ export const editVideo = async (req, res) => {
     });
   } catch (error) {
     console.error("Edit video error:", error);
+
     res.status(500).json({
       message: "Failed to update video",
     });

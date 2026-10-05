@@ -1,6 +1,6 @@
 import express from "express";
 import * as hmc from "../controllers/homepageController.js";
-import { upload } from "../middleware/uploadMiddleware.js";
+import { upload, videoUpload } from "../middleware/uploadMiddleware.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -19,7 +19,14 @@ router.patch(
 // ==================== Video ====================
 
 router.get("/video", hmc.getVideo);
-router.patch("/video", hmc.editVideo);
+
+router.patch(
+  "/video",
+  authenticate,
+  authorize("admin"),
+  videoUpload.single("video"),
+  hmc.editVideo,
+);
 
 // ==================== Choose Us ====================
 
@@ -32,7 +39,12 @@ router.delete("/reasons/:reason_id", hmc.deleteReason);
 
 router.get("/academic-programs", hmc.getAcademicPrograms);
 
-router.get("/grade-levels", hmc.getGradeLevels);
+router.get(
+  "/grade-levels",
+  authenticate,
+  authorize("admin"),
+  hmc.getGradeLevels,
+);
 
 router.post(
   "/academic-programs",

@@ -55,15 +55,23 @@ export const getVideo = async () => {
 };
 
 export const editVideo = async (data) => {
-  const video = await db
+  const updateData = {
+    video_title: data.video_title,
+  };
+
+  if (data.video_url) {
+    updateData.videourl = data.video_url;
+  }
+
+  await db
     .updateTable("home_video")
-    .set({
-      video_title: data.video_title,
-      video_url: data.video_url,
-    })
+    .set(updateData)
     .where("video_id", "=", 1)
     .executeTakeFirst();
-  return video;
+
+  return {
+    message: "Video updated successfully",
+  };
 };
 
 // ============= choose us
