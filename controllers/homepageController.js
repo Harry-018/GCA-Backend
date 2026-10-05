@@ -307,37 +307,58 @@ export const getChildrenActivities = async (req, res) => {
 
 export const addChildrenActivity = async (req, res) => {
   try {
-    const activity = await hmm.addChildrenActivity(req.body);
+    let activityImage;
 
-    res.status(201).json({
-      message: "Children activity added successfully",
-      data: activity,
+    if (req.file) {
+      const result = await uploadImage(
+        req.file.buffer,
+        "gca/homepage/children-activities",
+      );
+
+      activityImage = result.secure_url;
+    }
+
+    const result = await hmm.addChildrenActivity({
+      activity_title: req.body.activity_title,
+      activity_description: req.body.activity_description,
+      activity_image: activityImage,
     });
+
+    res.status(201).json(result);
   } catch (error) {
-    console.error("Add children activity error:", error);
+    console.error("Add children activty error:", error);
+
     res.status(500).json({
-      message: "Failed to add children activity",
+      message: "Failed to add children activty",
     });
   }
 };
 
 export const editChildrenActivity = async (req, res) => {
   try {
-    const { activity_id } = req.params;
+    let activityImage;
 
-    const activity = await hmm.editChildrenActivity(
-      Number(activity_id),
-      req.body,
-    );
+    if (req.file) {
+      const result = await uploadImage(
+        req.file.buffer,
+        "gca/homepage/children-activities",
+      );
 
-    res.status(200).json({
-      message: "Children activity updated successfully",
-      data: activity,
+      activityImage = result.secure_url;
+    }
+
+    const result = await hmm.editChildrenActivity(req.params.activity_id, {
+      activity_title: req.body.activity_title,
+      activity_description: req.body.activity_description,
+      activity_image: activityImage,
     });
+
+    res.status(200).json(result);
   } catch (error) {
-    console.error("Edit children activity error:", error);
+    console.error("Edit activity error:", error);
+
     res.status(500).json({
-      message: "Failed to update children activity",
+      message: "Failed to update activity",
     });
   }
 };

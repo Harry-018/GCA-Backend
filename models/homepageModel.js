@@ -219,46 +219,56 @@ export const editMissionVision = async (data) => {
 // ================== children activities
 
 export const getChildrenActivities = async () => {
-  const activities = await db
-    .selectFrom("children_activities")
-    .selectAll()
-    .execute();
+  const r = await db.selectFrom("children_activities").selectAll().execute();
 
-  return activities;
+  return {
+    r,
+    message: "get children activities",
+  };
 };
 
 export const addChildrenActivity = async (data) => {
-  const activity = await db
+  await db
     .insertInto("children_activities")
     .values({
       activity_title: data.activity_title,
       activity_description: data.activity_description,
       activity_image: data.activity_image,
     })
-    .executeTakeFirst();
+    .execute();
 
-  return activity;
+  return {
+    message: "Activity added successfully",
+  };
 };
 
 export const editChildrenActivity = async (activity_id, data) => {
-  const activity = await db
-    .updateTable("children_activities")
-    .set({
-      activity_title: data.activity_title,
-      activity_description: data.activity_description,
-      activity_image: data.activity_image,
-    })
-    .where("activity_id", "=", activity_id)
-    .executeTakeFirst();
+  const updateActivity = {
+    activity_title: data.activity_title,
+    activity_description: data.activity_description,
+    activity_image: data.activityImage,
+  };
 
-  return activity;
+  if (data.activity_image) {
+    updateActivity.activity_image = data.activityImage;
+  }
+
+  await db
+    .updateTable("children_activities")
+    .set(updateActivity)
+    .where("activity_id", "=", activity_id)
+    .execute();
+
+  return {
+    message: "Activity updated successfully",
+  };
 };
 
 export const deleteChildrenActivity = async (activity_id) => {
-  const activity = await db
+  await db
     .deleteFrom("children_activities")
     .where("activity_id", "=", activity_id)
     .executeTakeFirst();
 
-  return activity;
+  return true;
 };

@@ -93,10 +93,27 @@ router.patch(
 
 router.get("/children-activities", hmc.getChildrenActivities);
 
-router.post("/children-activities", hmc.addChildrenActivity);
+router.post(
+  "/children-activities",
+  authenticate,
+  authorize("admin"),
+  upload.single("activityImage"),
+  hmc.addChildrenActivity,
+);
 
-router.patch("/children-activities/:activity_id", hmc.editChildrenActivity);
+router.patch(
+  "/children-activities/:activity_id",
+  authenticate,
+  authorize("admin"),
+  upload.single("activityImage"),
+  hmc.editChildrenActivity,
+);
 
-router.delete("/children-activities/:activity_id", hmc.deleteChildrenActivity);
+router.delete(
+  "/children-activities/:activity_id",
+  authenticate,
+  authorize("admin"),
+  hmc.deleteChildrenActivity,
+);
 
 export default router;
