@@ -713,11 +713,7 @@ export const enrollApplicant = async (data) => {
         "parent_info.user_id",
         "applicant_parent.will_receive_account",
       ])
-      .where(
-        "applicant_parent.applicant_info_id",
-        "=",
-        application.applicant_info_id,
-      )
+      .where("applicant_parent.application_id", "=", application.application_id)
       .where("applicant_parent.will_receive_account", "=", 1)
       .executeTakeFirst();
 
