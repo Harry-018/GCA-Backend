@@ -524,7 +524,7 @@ export const promoteStudents = async (
       ])
       .where("sgl.sy_grade_level_id", "=", target_sy_grade_level_id)
       .where("sgl.sy_gradelevel_status", "=", "active")
-      .where("sy.sy_status", "=", "active")
+      .where("sy.sy_status", "=", "draft")
       .executeTakeFirst();
     if (!target) {
       throw new Error("Target school year and grade level are not active.");
