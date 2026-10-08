@@ -1,5 +1,22 @@
 import * as tuim from "../models/tuitionModel.js";
 
+export const getTuitionGradeLevels = async (req, res) => {
+  try {
+    const result = await tuim.getTuitionGradeLevels();
+
+    res.status(200).json({
+      r: result,
+      message: "Tuition grade levels retrieved successfully",
+    });
+  } catch (error) {
+    console.error("getTuitionGradeLevels error:", error);
+
+    res.status(500).json({
+      message: "Failed to retrieve tuition grade levels.",
+    });
+  }
+};
+
 export const getTuition = async (req, res) => {
   try {
     const { grade_level_id } = req.params;
@@ -65,7 +82,7 @@ export const createPaymentOption = async (req, res) => {
     console.error("createPaymentOption error:", error);
 
     res.status(500).json({
-      message: "Failed to create payment option.",
+      message: error.message || "Failed to create payment option.",
     });
   }
 };
@@ -84,7 +101,7 @@ export const patchFees = async (req, res) => {
     console.error("patchFees error:", error);
 
     res.status(500).json({
-      message: "Failed to update fees.",
+      message: error.message || "Failed to update fees.",
     });
   }
 };
@@ -106,7 +123,7 @@ export const patchPaymentOption = async (req, res) => {
     console.error("patchPaymentOption error:", error);
 
     res.status(500).json({
-      message: "Failed to update payment option.",
+      message: error.message || "Failed to update payment option.",
     });
   }
 };
@@ -128,7 +145,26 @@ export const patchGradePaymentOption = async (req, res) => {
     console.error("patchGradePaymentOption error:", error);
 
     res.status(500).json({
-      message: "Failed to update grade payment option.",
+      message: error.message || "Failed to update grade payment option.",
+    });
+  }
+};
+
+export const deleteGrade = async (req, res) => {
+  try {
+    const { grade_level_id } = req.params;
+
+    const result = await tuim.deleteGrade(Number(grade_level_id));
+
+    res.status(200).json({
+      r: result,
+      message: "Tuition configuration deleted successfully",
+    });
+  } catch (error) {
+    console.error("deleteGrade error:", error);
+
+    res.status(500).json({
+      message: error.message || "Failed to delete tuition configuration.",
     });
   }
 };
