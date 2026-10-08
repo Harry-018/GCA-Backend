@@ -504,8 +504,7 @@ export const promoteStudents = async (
     throw new Error("No students selected.");
   }
   return await db.transaction().execute(async (trx) => {
-    /* * Validate target school-year/grade-level. */
-    const target = await trx
+    /* * Validate target school-year/grade-level. */ const target = await trx
       .selectFrom("schoolyears_gradelevels as sgl")
       .innerJoin(
         "school_years as sy",
@@ -525,7 +524,7 @@ export const promoteStudents = async (
       ])
       .where("sgl.sy_grade_level_id", "=", target_sy_grade_level_id)
       .where("sgl.sy_gradelevel_status", "=", "active")
-      .where("sy.sy_status", "=", "draft")
+      .where("sy.sy_status", "=", "active")
       .executeTakeFirst();
     if (!target) {
       throw new Error("Target school year and grade level are not active.");
