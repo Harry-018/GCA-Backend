@@ -504,7 +504,8 @@ export const promoteStudents = async (
     throw new Error("No students selected.");
   }
   return await db.transaction().execute(async (trx) => {
-    /* * Validate target school-year/grade-level. */ const target = await trx
+    /* * Validate target school-year/grade-level. */
+    const target = await trx
       .selectFrom("schoolyears_gradelevels as sgl")
       .innerJoin(
         "school_years as sy",
