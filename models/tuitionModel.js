@@ -253,13 +253,31 @@ export const patchFees = async (fees_id, data) => {
 };
 
 export const patchPaymentOption = async (payment_option_id, data) => {
-  return await db
+  const updateData = {};
+
+  if (data.option_name !== undefined) {
+    updateData.option_name = data.option_name;
+  }
+
+  if (data.due_date_display !== undefined) {
+    updateData.due_date_display = data.due_date_display;
+  }
+
+  if (data.installment !== undefined) {
+    updateData.installment = Number(data.installment);
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    throw new Error("No payment option fields provided to update.");
+  }
+
+  await db
     .updateTable("payment_option")
-    .set({
-      installment: data.installment,
-    })
-    .where("payment_option_id", "=", payment_option_id)
+    .set(updateData)
+    .where("payment_option_id", "=", Number(payment_option_id))
     .executeTakeFirst();
+
+  return { payment_option_id: Number(payment_option_id) };
 };
 
 export const patchGradePaymentOption = async (
@@ -300,14 +318,23 @@ export const patchGradePaymentOption = async (
     // ------------------------------------------------------------
     // 3. Update discount + final amount
     // ------------------------------------------------------------
-    return await trx
+    await trx
       .updateTable("gradelevel_paymentoptions")
       .set({
         discount,
         amount,
       })
-      .where("gradelevel_paymentoption_id", "=", gradelevel_paymentoption_id)
+      .where(
+        "gradelevel_paymentoptions.gradelevel_paymentoption_id",
+        "=",
+        Number(gradelevel_paymentoption_id),
+      )
       .executeTakeFirst();
+    return {
+      gradelevel_paymentoption_id: Number(gradelevel_paymentoption_id),
+      discount,
+      amount,
+    };
   });
 };
 
