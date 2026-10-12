@@ -360,26 +360,36 @@ export const deleteGrade = async (grade_level_id) => {
 
 export const deleteOption = async (payment_option_id) => {
   return await db.transaction().execute(async (trx) => {
+    const optionId = Number(payment_option_id);
+
+    // 1. Check if the payment option exists
     const option = await trx
       .selectFrom("payment_option")
       .select("payment_option_id")
-      .where("payment_option_id", "=", payment_option_id)
+      .where("payment_option_id", "=", optionId)
       .executeTakeFirst();
 
     if (!option) {
       throw new Error("Payment option not found.");
     }
 
-    // Remove this payment option's associations with every grade level.
+    // 2. Preserve notifications, but unlink the deleted payment option
     await trx
-      .deleteFrom("gradelevel_paymentoptions")
-      .where("payment_option_id", "=", payment_option_id)
+      .updateTable("notifications")
+      .set({ payment_option_id: null })
+      .where("payment_option_id", "=", optionId)
       .execute();
 
-    // Remove the master payment option.
+    // 3. Delete grade-level associations
+    await trx
+      .deleteFrom("gradelevel_paymentoptions")
+      .where("payment_option_id", "=", optionId)
+      .execute();
+
+    // 4. Delete the payment option
     await trx
       .deleteFrom("payment_option")
-      .where("payment_option_id", "=", payment_option_id)
+      .where("payment_option_id", "=", optionId)
       .execute();
 
     return {
