@@ -79,36 +79,21 @@ export const getFeesInGradeLevels = async (grade_level_id) => {
 };
 
 export const getPaymentOptionsInGradeLevels = async (grade_level_id) => {
-  const activeSY = await db
-    .selectFrom("school_years")
-    .select("school_year_id")
-    .where("sy_status", "=", "active")
-    .executeTakeFirst();
-
-  if (!activeSY) {
-    throw new Error("No active school year found");
-  }
-
   return await db
-    .selectFrom("gradelevel_paymentoptions")
+    .selectFrom("gradelevel_paymentoptions as gpo")
     .innerJoin(
-      "payment_option",
-      "payment_option.payment_option_id",
-      "gradelevel_paymentoptions.payment_option_id",
+      "payment_option as po",
+      "po.payment_option_id",
+      "gpo.payment_option_id",
     )
     .select([
-      "gradelevel_paymentoptions.gradelevel_paymentoption_id",
-      "payment_option.option_name",
-      "payment_option.due_date_display",
-      "gradelevel_paymentoptions.amount",
-      "gradelevel_paymentoptions.discount",
+      "gpo.gradelevel_paymentoption_id",
+      "po.option_name",
+      "po.due_date_display",
+      "gpo.amount",
+      "gpo.discount",
     ])
-    .where("gradelevel_paymentoptions.grade_level_id", "=", grade_level_id)
-    .where(
-      "gradelevel_paymentoptions.school_year_id",
-      "=",
-      activeSY.school_year_id,
-    )
+    .where("gpo.grade_level_id", "=", Number(grade_level_id))
     .execute();
 };
 
