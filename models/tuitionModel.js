@@ -362,7 +362,6 @@ export const deleteOption = async (payment_option_id) => {
   return await db.transaction().execute(async (trx) => {
     const optionId = Number(payment_option_id);
 
-    // 1. Check if the payment option exists
     const option = await trx
       .selectFrom("payment_option")
       .select("payment_option_id")
@@ -373,20 +372,20 @@ export const deleteOption = async (payment_option_id) => {
       throw new Error("Payment option not found.");
     }
 
-    // 2. Preserve notifications, but unlink the deleted payment option
+    // Preserve notifications, but detach them from this option.
     await trx
       .updateTable("notifications")
       .set({ payment_option_id: null })
       .where("payment_option_id", "=", optionId)
       .execute();
 
-    // 3. Delete grade-level associations
+    // Delete grade/payment-option associations.
     await trx
       .deleteFrom("gradelevel_paymentoptions")
       .where("payment_option_id", "=", optionId)
       .execute();
 
-    // 4. Delete the payment option
+    // Delete the master payment option.
     await trx
       .deleteFrom("payment_option")
       .where("payment_option_id", "=", optionId)
