@@ -357,3 +357,33 @@ export const deleteGrade = async (grade_level_id) => {
     };
   });
 };
+
+export const deleteOption = async (payment_option_id) => {
+  return await db.transaction().execute(async (trx) => {
+    const option = await trx
+      .selectFrom("payment_option")
+      .select("payment_option_id")
+      .where("payment_option_id", "=", payment_option_id)
+      .executeTakeFirst();
+
+    if (!option) {
+      throw new Error("Payment option not found.");
+    }
+
+    // Remove this payment option's associations with every grade level.
+    await trx
+      .deleteFrom("gradelevel_paymentoptions")
+      .where("payment_option_id", "=", payment_option_id)
+      .execute();
+
+    // Remove the master payment option.
+    await trx
+      .deleteFrom("payment_option")
+      .where("payment_option_id", "=", payment_option_id)
+      .execute();
+
+    return {
+      message: "Payment option deleted successfully.",
+    };
+  });
+};

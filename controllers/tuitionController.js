@@ -168,3 +168,22 @@ export const deleteGrade = async (req, res) => {
     });
   }
 };
+
+export const deleteOption = async (req, res) => {
+  try {
+    const { payment_option_id } = req.body;
+
+    const result = await tuim.deleteOption(Number(payment_option_id));
+
+    res.status(200).json({
+      r: result,
+      message: "Payment Option deleted successfully",
+    });
+  } catch (error) {
+    console.error("delete option error:", error);
+
+    res.status(500).json({
+      message: error.message || "Failed to delete payment option.",
+    });
+  }
+};

@@ -40,4 +40,6 @@ router.patch(
 // Delete tuition configuration for a grade level
 router.delete("/grade/:grade_level_id", tuic.deleteGrade);
 
+router.delete("/payment-option", tuic.deleteOption);
+
 export default router;
