@@ -5,18 +5,6 @@ export const getPaymentOptions = async () => {
   return await db.selectFrom("payment_option").selectAll().execute();
 };
 
-export const createPaymentOption = async (data) => {
-  const result = await db
-    .insertInto("payment_option")
-    .values({
-      option_name: data.option_name,
-      due_date_display: data.due_date_display,
-    })
-    .executeTakeFirst();
-
-  return { payment_option_id: Number(result.insertId) };
-};
-
 export const editPaymentOption = async (payment_option_id, data) => {
   const result = await db
     .updateTable("payment_option")
@@ -28,20 +16,6 @@ export const editPaymentOption = async (payment_option_id, data) => {
     .executeTakeFirst();
 
   if (Number(result.numUpdatedRows) === 0) {
-    throw new Error("Payment option not found");
-  }
-
-  return { payment_option_id: Number(payment_option_id) };
-};
-
-export const deletePaymentOption = async (payment_option_id) => {
-  const result = await db
-    .deleteFrom("payment_option")
-
-    .where("payment_option_id", "=", payment_option_id)
-    .executeTakeFirst();
-
-  if (Number(result.numDeletedRows) === 0) {
     throw new Error("Payment option not found");
   }
 

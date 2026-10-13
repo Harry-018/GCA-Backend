@@ -1,9 +1,7 @@
 import express from "express";
 import {
   getPaymentOptions,
-  createPaymentOption,
   editPaymentOption,
-  deletePaymentOption,
   getFeesInGradeLevels,
   getPaymentOptionsInGradeLevels,
   addFeesPaymentInGradeLevel,
@@ -16,25 +14,11 @@ const router = express.Router();
 
 router.get("/payment-option", getPaymentOptions);
 
-router.post(
-  "/payment-option",
-  authenticate,
-  authorize("admin"),
-  createPaymentOption,
-);
-
 router.patch(
   "/payment-option/:payment_option_id",
   authenticate,
   authorize("admin"),
   editPaymentOption,
-);
-
-router.delete(
-  "/payment-option/:payment_option_id",
-  authenticate,
-  authorize("admin"),
-  deletePaymentOption,
 );
 
 router.get("/fees-gradelevel/:grade_level_id", getFeesInGradeLevels);

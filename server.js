@@ -19,6 +19,7 @@ import com from "./routes/communicationRoutes.js";
 import hm from "./routes/homepageRoutes.js";
 import trr from "./routes/transportationRoutes.js";
 import tuir from "./routes/tuitionRoutes.js";
+import dash from "./routes/dashboardRoutes.js";
 dotenv.config();
 
 console.log("Starting server...");
@@ -46,6 +47,7 @@ app.use("/api/settings", set);
 app.use("/api/homepage", hm);
 app.use("/api/transportation", trr);
 app.use("/api/tuition", tuir);
+app.use("/api/dashboard", dash);
 
 const PORT = process.env.PORT || 5000;
 

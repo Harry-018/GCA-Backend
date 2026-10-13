@@ -16,39 +16,11 @@ export const getPaymentOptions = async (req, res) => {
   }
 };
 
-export const createPaymentOption = async (req, res) => {
-  try {
-    if (!req.body.option_name) {
-      return res.status(400).json({ message: "option_name is required" });
-    }
-
-    const paymentOption = await po.createPaymentOption(req.body);
-
-    res.status(201).json({ data: paymentOption });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
 export const editPaymentOption = async (req, res) => {
   try {
     const editOption = await po.editPaymentOption(
       req.params.payment_option_id,
       req.body,
-    );
-    res.status(200).json({ data: editOption });
-  } catch (error) {
-    if (error.message === "Payment option not found") {
-      return res.status(404).json({ message: error.message });
-    }
-    res.status(500).json({ message: error.message });
-  }
-};
-
-export const deletePaymentOption = async (req, res) => {
-  try {
-    const editOption = await po.deletePaymentOption(
-      req.params.payment_option_id,
     );
     res.status(200).json({ data: editOption });
   } catch (error) {
