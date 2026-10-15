@@ -1,27 +1,96 @@
 import * as sm from "../models/officialStudentsModel.js";
 
 export const getStudents = async (req, res) => {
-  console.log("GET STUDENTS CONTROLLER HIT");
-  console.log("QUERY:", req.query);
   try {
-    const { status = "all", search = "", page = 1, limit = 10 } = req.query;
+    const {
+      status = "all",
+      search = "",
+      page = "1",
+      limit = "10",
+      school_year_id,
+    } = req.query;
 
-    console.log("SEARCH:", search);
-    console.log("STATUS:", status);
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+
+    if (
+      !Number.isInteger(pageNumber) ||
+      pageNumber < 1 ||
+      !Number.isInteger(limitNumber) ||
+      limitNumber < 1
+    ) {
+      return res.status(400).json({
+        message: "Page and limit must be positive integers.",
+      });
+    }
+
+    const schoolYears = await sm.getStudentSchoolYears();
+
+    const requestedId =
+      school_year_id === undefined ? null : Number(school_year_id);
+
+    if (
+      school_year_id !== undefined &&
+      (!Number.isInteger(requestedId) || requestedId <= 0)
+    ) {
+      return res.status(400).json({
+        message: "A valid school year ID is required.",
+      });
+    }
+
+    const activeSchoolYear = schoolYears.find(
+      (year) => year.sy_status === "active",
+    );
+
+    const selectedSchoolYearId =
+      requestedId ?? activeSchoolYear?.school_year_id ?? null;
+
+    if (
+      selectedSchoolYearId !== null &&
+      !schoolYears.some(
+        (year) => Number(year.school_year_id) === selectedSchoolYearId,
+      )
+    ) {
+      return res.status(400).json({
+        message: "The selected school year is unavailable.",
+      });
+    }
+
+    // No active year and no explicit archived year selected.
+    if (selectedSchoolYearId === null) {
+      return res.status(200).json({
+        data: [],
+        pagination: {
+          page: pageNumber,
+          limit: limitNumber,
+          total: 0,
+          totalPages: 0,
+        },
+        school_years: schoolYears,
+        selected_school_year_id: null,
+        message: "Select a school year to view students.",
+      });
+    }
 
     const result = await sm.getStudents({
       status,
       search,
-      page: Number(page),
-      limit: Number(limit),
+      page: pageNumber,
+      limit: limitNumber,
+      school_year_id: selectedSchoolYearId,
     });
 
-    res.status(200).json(result);
+    return res.status(200).json({
+      ...result,
+      school_years: schoolYears,
+      selected_school_year_id: selectedSchoolYearId,
+    });
   } catch (error) {
     console.error("Error getting students:", error);
 
-    res.status(500).json({
-      message: error.message,
+    return res.status(500).json({
+      message: "Failed to retrieve students.",
+      error: error.message,
     });
   }
 };
