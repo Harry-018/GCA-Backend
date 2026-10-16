@@ -1,17 +1,108 @@
 import * as secm from "../models/sectionModel.js";
 
-export const getSectionGradeLevels = async (req, res) => {
+const getSelectedSchoolYear = async (requestedId) => {
+  const schoolYears = await secm.getSectionSchoolYears();
+
+  const activeSchoolYear = schoolYears.find(
+    (year) => year.sy_status === "active",
+  );
+
+  const selectedId = requestedId
+    ? Number(requestedId)
+    : activeSchoolYear?.school_year_id;
+
+  if (!selectedId) {
+    return {
+      schoolYears,
+      selectedSchoolYearId: null,
+    };
+  }
+
+  if (!Number.isInteger(selectedId) || selectedId <= 0) {
+    throw new Error("Invalid school_year_id.");
+  }
+
+  const selectedSchoolYear = schoolYears.find(
+    (year) => Number(year.school_year_id) === selectedId,
+  );
+
+  if (!selectedSchoolYear) {
+    throw new Error("Selected school year was not found or is unavailable.");
+  }
+
+  return {
+    schoolYears,
+    selectedSchoolYearId: selectedId,
+  };
+};
+
+export const getSectionSchoolYears = async (req, res) => {
   try {
-    const result = await secm.getSectionGradeLevels();
-    res.status(200).json({ data: result });
+    const { schoolYears, selectedSchoolYearId } = await getSelectedSchoolYear(
+      req.query.school_year_id,
+    );
+
+    res.status(200).json({
+      data: schoolYears,
+      selected_school_year_id: selectedSchoolYearId,
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Failed to get section grade levels.",
-      error: error.message,
+    console.error("Failed to get section school years:", error);
+
+    res.status(400).json({
+      message: error.message,
     });
   }
 };
+
+export const getSections = async (req, res) => {
+  try {
+    const { schoolYears, selectedSchoolYearId } = await getSelectedSchoolYear(
+      req.query.school_year_id,
+    );
+
+    const sections = selectedSchoolYearId
+      ? await secm.getSections(selectedSchoolYearId)
+      : [];
+
+    res.status(200).json({
+      data: sections,
+      school_years: schoolYears,
+      selected_school_year_id: selectedSchoolYearId,
+    });
+  } catch (error) {
+    console.error("Error fetching sections:", error);
+
+    res.status(400).json({
+      message: error.message,
+    });
+  }
+};
+
+export const getSectionGradeLevels = async (req, res) => {
+  try {
+    const { schoolYears, selectedSchoolYearId } = await getSelectedSchoolYear(
+      req.query.school_year_id,
+    );
+
+    const gradeLevels = selectedSchoolYearId
+      ? await secm.getSectionGradeLevels(selectedSchoolYearId)
+      : [];
+
+    res.status(200).json({
+      data: gradeLevels,
+      school_years: schoolYears,
+      selected_school_year_id: selectedSchoolYearId,
+    });
+  } catch (error) {
+    console.error("Failed to get section grade levels:", error);
+
+    res.status(400).json({
+      message: error.message,
+    });
+  }
+};
+
 export const getAdviserTeachers = async (req, res) => {
   try {
     const teachers = await secm.getAdviserTeachers();
@@ -181,14 +272,5 @@ export const promoteStudents = async (req, res) => {
     res
       .status(400)
       .json({ message: "Failed to promote students.", error: error.message });
-  }
-};
-export const getSections = async (req, res) => {
-  try {
-    const sections = await secm.getSections();
-    res.status(200).json({ data: sections });
-  } catch (error) {
-    console.error("Error fetching sections:", error);
-    res.status(500).json({ message: error.message });
   }
 };

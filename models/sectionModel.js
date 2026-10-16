@@ -2,8 +2,17 @@ import db from "../config/db.js";
 
 import { sql } from "kysely";
 
-export const getSectionGradeLevels = async () => {
+export const getSectionSchoolYears = async () => {
   return await db
+    .selectFrom("school_years")
+    .select(["school_year_id", "start_date", "end_date", "sy_status"])
+    .where("sy_status", "in", ["active", "archived"])
+    .orderBy("start_date", "desc")
+    .execute();
+};
+
+export const getSectionGradeLevels = async (school_year_id) => {
+  let query = db
     .selectFrom("schoolyears_gradelevels as sgl")
     .innerJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
     .innerJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
@@ -17,8 +26,7 @@ export const getSectionGradeLevels = async () => {
       "sy.end_date",
     ])
     .select(({ fn }) => [fn.count("s.section_id").as("section_count")])
-    .where("sy.sy_status", "=", "active")
-    .where("sgl.sy_gradelevel_status", "=", "active")
+    .where("sy.school_year_id", "=", Number(school_year_id))
     .where((eb) =>
       eb.or([
         eb("s.section_status", "=", "active"),
@@ -33,8 +41,9 @@ export const getSectionGradeLevels = async () => {
       "sy.start_date",
       "sy.end_date",
     ])
-    .orderBy("gl.grade_level_id", "asc")
-    .execute();
+    .orderBy("gl.grade_level_id", "asc");
+
+  return await query.execute();
 };
 
 export const getSectionsByGradeLevel = async (sy_grade_level_id) => {
@@ -633,8 +642,8 @@ export const getAdviserTeachers = async () => {
     .execute();
 };
 
-export const getSections = async () => {
-  const sections = await db
+export const getSections = async (school_year_id) => {
+  let query = db
     .selectFrom("sections as s")
     .innerJoin(
       "section_name_versions as snv",
@@ -656,6 +665,7 @@ export const getSections = async () => {
       "snv.section_name",
       "s.sy_grade_level_id",
       "gl.grade_level_name",
+      "sgl.school_year_id",
       "s.adviser_teacher_id",
       "ti.first_name",
       "ti.middle_name",
@@ -663,8 +673,11 @@ export const getSections = async () => {
       "s.section_status",
     ])
     .where("s.section_status", "=", "active")
-    .orderBy("snv.section_name", "asc")
-    .execute();
+    .where("sgl.school_year_id", "=", Number(school_year_id))
+    .orderBy("snv.section_name", "asc");
+
+  const sections = await query.execute();
+
   return sections.map((section) => ({
     ...section,
     adviser_name: section.adviser_teacher_id

@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  getSectionSchoolYears,
   getSectionGradeLevels,
   getSectionsByGradeLevel,
   getSectionDetails,
@@ -15,6 +16,14 @@ import {
 } from "../controllers/sectionController.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 const router = express.Router();
+
+router.get(
+  "/school-years",
+  authenticate,
+  authorize("admin"),
+  getSectionSchoolYears,
+);
+
 /* * Section list */ router.get(
   "/",
   authenticate,
