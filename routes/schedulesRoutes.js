@@ -1,6 +1,7 @@
 import express from "express";
 
 import {
+  getScheduleSchoolYears,
   getScheduleGradeLevels,
   getScheduleSections,
   getSectionSchedules,
@@ -17,6 +18,13 @@ import {
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
+
+router.get(
+  "/school-years",
+  authenticate,
+  authorize("admin"),
+  getScheduleSchoolYears,
+);
 
 router.get(
   "/grade-levels",

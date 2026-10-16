@@ -1,8 +1,16 @@
 import db from "../config/db.js";
 
 //works
-export const getScheduleGradeLevels = async () => {
+export const getScheduleSchoolYears = async () => {
   return await db
+    .selectFrom("school_years")
+    .select(["school_year_id", "start_date", "end_date", "sy_status"])
+    .orderBy("start_date", "desc")
+    .execute();
+};
+
+export const getScheduleGradeLevels = async (school_year_id) => {
+  let query = db
     .selectFrom("schoolyears_gradelevels as sgl")
     .innerJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
     .innerJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
@@ -14,16 +22,24 @@ export const getScheduleGradeLevels = async () => {
       "sy.school_year_id",
       "sy.start_date",
       "sy.end_date",
+      "sy.sy_status",
     ])
     .select(({ fn }) => [fn.count("s.section_id").as("section_count")])
-    .where("sy.sy_status", "=", "active")
     .where("sgl.sy_gradelevel_status", "=", "active")
     .where((eb) =>
       eb.or([
         eb("s.section_status", "=", "active"),
         eb("s.section_id", "is", null),
       ]),
-    )
+    );
+
+  if (school_year_id) {
+    query = query.where("sy.school_year_id", "=", Number(school_year_id));
+  } else {
+    query = query.where("sy.sy_status", "=", "active");
+  }
+
+  return await query
     .groupBy([
       "sgl.sy_grade_level_id",
       "gl.grade_level_id",
@@ -31,10 +47,12 @@ export const getScheduleGradeLevels = async () => {
       "sy.school_year_id",
       "sy.start_date",
       "sy.end_date",
+      "sy.sy_status",
     ])
     .orderBy("gl.grade_level_id", "asc")
     .execute();
 };
+
 //works
 export const getScheduleSections = async (sy_grade_level_id) => {
   return await db

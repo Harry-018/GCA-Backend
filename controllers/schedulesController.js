@@ -1,11 +1,49 @@
 import * as schedm from "../models/schedulesModel.js";
 
+export const getScheduleSchoolYears = async (req, res) => {
+  try {
+    const schoolYears = await schedm.getScheduleSchoolYears();
+
+    const activeYear = schoolYears.find(
+      (year) => year.sy_status?.toLowerCase() === "active",
+    );
+
+    res.status(200).json({
+      data: schoolYears,
+      selected_school_year_id: activeYear?.school_year_id ?? null,
+    });
+  } catch (error) {
+    console.error("Failed to get schedule school years:", error);
+
+    res.status(500).json({
+      message: "Failed to get schedule school years.",
+      error: error.message,
+    });
+  }
+};
+
 export const getScheduleGradeLevels = async (req, res) => {
   try {
-    const gradeLevels = await schedm.getScheduleGradeLevels();
+    const { school_year_id } = req.query;
+
+    let schoolYearId;
+
+    if (school_year_id !== undefined && school_year_id !== "") {
+      schoolYearId = Number(school_year_id);
+
+      if (!Number.isInteger(schoolYearId) || schoolYearId <= 0) {
+        return res.status(400).json({
+          message: "Invalid school year ID.",
+        });
+      }
+    }
+
+    const gradeLevels = await schedm.getScheduleGradeLevels(schoolYearId);
+
     res.status(200).json({ data: gradeLevels });
   } catch (error) {
     console.error("Failed to get schedule grade levels:", error);
+
     res.status(500).json({
       message: "Failed to get schedule grade levels.",
       error: error.message,
