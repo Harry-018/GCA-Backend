@@ -136,11 +136,21 @@ export const getGradeLevelBySchoolYearGradeLevel = async (req, res) => {
 
 export const getAvailableGradelevels = async (req, res) => {
   try {
-    const availableGradeLevels = await am.getGradelevelsInSchoolyear();
+    const { school_year_id } = req.query;
 
-    res.status(200).json({ data: availableGradeLevels });
+    const availableGradeLevels = await am.getGradelevelsInSchoolyear(
+      school_year_id ? Number(school_year_id) : null,
+    );
+
+    res.status(200).json({
+      data: availableGradeLevels,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("getAvailableGradelevels error:", error);
+
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
 
