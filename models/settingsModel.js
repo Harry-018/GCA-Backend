@@ -44,28 +44,36 @@ export const updateSchoolInformation = async (data) => {
     throw new Error("School address is required.");
   }
 
-  const schoolInformation = await db
+  const existing = await db
     .selectFrom("school_information")
-    .select("school_info_id")
+    .select(["school_info_id", "school_logo"])
     .orderBy("school_info_id", "asc")
     .executeTakeFirst();
 
-  if (!schoolInformation) {
+  if (!existing) {
     throw new Error("School information not found.");
+  }
+
+  // Keep the existing logo if no new logo was uploaded.
+  const updatedLogo =
+    typeof school_logo === "string" && school_logo.trim()
+      ? school_logo.trim()
+      : existing.school_logo;
+
+  if (!updatedLogo) {
+    throw new Error("School logo is required.");
   }
 
   const result = await db
     .updateTable("school_information")
     .set({
       school_name: school_name.trim(),
-      ...(school_logo?.trim() && {
-        school_logo: school_logo.trim(),
-      }),
+      school_logo: updatedLogo,
       contact_number: contact_number.trim(),
       school_email: school_email.trim(),
       school_address: school_address.trim(),
     })
-    .where("school_info_id", "=", schoolInformation.school_info_id)
+    .where("school_info_id", "=", existing.school_info_id)
     .executeTakeFirst();
 
   if (Number(result.numUpdatedRows) !== 1) {
@@ -73,9 +81,9 @@ export const updateSchoolInformation = async (data) => {
   }
 
   return {
-    school_info_id: Number(schoolInformation.school_info_id),
+    school_info_id: Number(existing.school_info_id),
     school_name: school_name.trim(),
-    school_logo: school_logo.trim(),
+    school_logo: updatedLogo,
     contact_number: contact_number.trim(),
     school_email: school_email.trim(),
     school_address: school_address.trim(),
