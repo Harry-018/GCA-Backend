@@ -5,6 +5,7 @@ export const getScheduleSchoolYears = async () => {
   return await db
     .selectFrom("school_years")
     .select(["school_year_id", "start_date", "end_date", "sy_status"])
+    .where("sy_status", "in", ["active", "archived"])
     .orderBy("start_date", "desc")
     .execute();
 };
