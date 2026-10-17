@@ -1,4 +1,5 @@
 import * as setm from "../models/settingsModel.js";
+import { uploadImage } from "../middleware/cloudinaryMiddleware.js";
 
 export const getSchoolInformation = async (req, res) => {
   try {
@@ -27,10 +28,16 @@ export const updateSchoolInformation = async (req, res) => {
   try {
     const data = {
       ...req.body,
-      ...(req.file && {
-        school_logo: req.file.path,
-      }),
     };
+
+    if (req.file) {
+      const result = await uploadImage(
+        req.file.buffer,
+        "gca/settings/school-information",
+      );
+
+      data.school_logo = result.secure_url;
+    }
 
     const schoolInformation = await setm.updateSchoolInformation(data);
 

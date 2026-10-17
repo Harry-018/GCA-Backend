@@ -28,19 +28,19 @@ export const updateSchoolInformation = async (data) => {
     school_address,
   } = data;
 
-  if (!school_name?.trim()) {
+  if (typeof school_name !== "string" || !school_name.trim()) {
     throw new Error("School name is required.");
   }
 
-  if (!contact_number?.trim()) {
+  if (typeof contact_number !== "string" || !contact_number.trim()) {
     throw new Error("Contact number is required.");
   }
 
-  if (!school_email?.trim()) {
+  if (typeof school_email !== "string" || !school_email.trim()) {
     throw new Error("School email is required.");
   }
 
-  if (!school_address?.trim()) {
+  if (typeof school_address !== "string" || !school_address.trim()) {
     throw new Error("School address is required.");
   }
 
