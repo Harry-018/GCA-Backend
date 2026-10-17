@@ -25,7 +25,14 @@ export const getSchoolInformation = async (req, res) => {
 
 export const updateSchoolInformation = async (req, res) => {
   try {
-    const schoolInformation = await setm.updateSchoolInformation(req.body);
+    const data = {
+      ...req.body,
+      ...(req.file && {
+        school_logo: req.file.path,
+      }),
+    };
+
+    const schoolInformation = await setm.updateSchoolInformation(data);
 
     res.status(200).json({
       message: "School information updated successfully.",

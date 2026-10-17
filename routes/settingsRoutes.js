@@ -1,6 +1,7 @@
 import express from "express";
 import * as setc from "../controllers/settingsController.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
+import { upload } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -136,6 +137,7 @@ router.put(
   "/school-information",
   authenticate,
   authorize("admin"),
+  upload.single("school_logo"),
   setc.updateSchoolInformation,
 );
 

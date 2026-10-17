@@ -32,10 +32,6 @@ export const updateSchoolInformation = async (data) => {
     throw new Error("School name is required.");
   }
 
-  if (!school_logo?.trim()) {
-    throw new Error("School logo is required.");
-  }
-
   if (!contact_number?.trim()) {
     throw new Error("Contact number is required.");
   }
@@ -62,7 +58,9 @@ export const updateSchoolInformation = async (data) => {
     .updateTable("school_information")
     .set({
       school_name: school_name.trim(),
-      school_logo: school_logo.trim(),
+      ...(school_logo?.trim() && {
+        school_logo: school_logo.trim(),
+      }),
       contact_number: contact_number.trim(),
       school_email: school_email.trim(),
       school_address: school_address.trim(),
