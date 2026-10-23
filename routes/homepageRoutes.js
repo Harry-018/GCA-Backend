@@ -8,6 +8,7 @@ const router = express.Router();
 // ==================== Banner ====================
 
 router.get("/banner", hmc.getBanner);
+
 router.patch(
   "/banner",
   authenticate,

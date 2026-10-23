@@ -27,12 +27,7 @@ export const getSectionGradeLevels = async (school_year_id) => {
     ])
     .select(({ fn }) => [fn.count("s.section_id").as("section_count")])
     .where("sy.school_year_id", "=", Number(school_year_id))
-    .where((eb) =>
-      eb.or([
-        eb("s.section_status", "=", "active"),
-        eb("s.section_id", "is", null),
-      ]),
-    )
+    .where("s.section_status", "=", "active")
     .groupBy([
       "sgl.sy_grade_level_id",
       "gl.grade_level_id",

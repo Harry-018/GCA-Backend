@@ -126,12 +126,7 @@ router.patch(
   setc.reactivateSkill,
 );
 
-router.get(
-  "/school-information",
-  authenticate,
-  authorize("admin"),
-  setc.getSchoolInformation,
-);
+router.get("/school-information", setc.getSchoolInformation);
 
 router.put(
   "/school-information",

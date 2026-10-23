@@ -183,12 +183,18 @@ const buildApplicationsQuery = ({ app_status, search }) => {
 export const getApplications = async (app_status, page, limit, search) => {
   const offset = (page - 1) * limit;
   const applications = await buildApplicationsQuery({ app_status, search })
+    .leftJoin(
+      "rejection as rr",
+      "rr.rejection_reason_id",
+      "a.rejection_reason_id",
+    )
     .select([
       "a.application_id",
       "a.application_no",
       "a.application_status",
       "a.date_applied",
       "a.rejected_at",
+      "rr.rejection_reason",
       "ev.email",
       "ai.first_name",
       "ai.last_name",
@@ -221,6 +227,7 @@ export const getApplicationById = async (application_id) => {
       "ev.verification_id",
       "a.verification_id",
     )
+
     .innerJoin("grade_levels as gl", "gl.grade_level_id", "a.grade_level_id")
     .select([
       "a.application_id",
@@ -229,6 +236,7 @@ export const getApplicationById = async (application_id) => {
       "a.date_applied",
       "a.rejected_at",
       "a.rejection_reason_id",
+
       "a.gradelevel_paymentoption_id",
       "ev.email",
       "ai.applicant_info_id",
