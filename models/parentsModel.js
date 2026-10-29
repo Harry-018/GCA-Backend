@@ -102,3 +102,31 @@ export const getParents = async ({ search = "", page = 1, limit = 10 }) => {
     },
   };
 };
+
+export const getParentInfoByUserId = async (user_id) => {
+  const parent = await db
+    .selectFrom("parent_info as pi")
+    .innerJoin("user_accounts as ua", "pi.user_id", "ua.user_id")
+    .select([
+      // Parent information
+      "pi.parent_info_id",
+      "pi.first_name",
+      "pi.middle_name",
+      "pi.last_name",
+      "pi.contact_number",
+      "pi.occupation",
+      "pi.email",
+      "pi.user_id",
+
+      // User account
+      "ua.email as account_email",
+      "ua.first_name as account_first_name",
+      "ua.last_name as account_last_name",
+      "ua.role",
+      "ua.account_status",
+    ])
+    .where("ua.user_id", "=", user_id)
+    .executeTakeFirst();
+
+  return parent;
+};
