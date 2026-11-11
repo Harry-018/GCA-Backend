@@ -11,34 +11,42 @@ export const getSectionSchoolYears = async () => {
     .execute();
 };
 
-export const getSectionGradeLevels = async (school_year_id) => {
-  let query = db
-    .selectFrom("schoolyears_gradelevels as sgl")
-    .innerJoin("school_years as sy", "sgl.school_year_id", "sy.school_year_id")
-    .innerJoin("grade_levels as gl", "sgl.grade_level_id", "gl.grade_level_id")
-    .leftJoin("sections as s", "sgl.sy_grade_level_id", "s.sy_grade_level_id")
+export const getSectionGradeLevels = async (selectedSchoolYearId) => {
+  return await db
+    .selectFrom("schoolyears_gradelevels as sygl")
+    .innerJoin("school_years as sy", "sygl.school_year_id", "sy.school_year_id")
+    .innerJoin("grade_levels as gl", "sygl.grade_level_id", "gl.grade_level_id")
+    .leftJoin("sections as s", (join) =>
+      join
+        .onRef("s.sy_grade_level_id", "=", "sygl.sy_grade_level_id")
+        .on("s.section_status", "=", "active"),
+    )
     .select([
-      "sgl.sy_grade_level_id",
-      "gl.grade_level_id",
-      "gl.grade_level_name",
-      "sy.school_year_id",
+      "sygl.sy_grade_level_id",
+      "sygl.school_year_id",
+      "sygl.grade_level_id",
+      "sygl.sy_gradelevel_status",
+      "sy.sy_status",
       "sy.start_date",
       "sy.end_date",
+      "gl.grade_level_name",
     ])
     .select(({ fn }) => [fn.count("s.section_id").as("section_count")])
-    .where("sy.school_year_id", "=", Number(school_year_id))
-    .where("s.section_status", "=", "active")
+    .where("sygl.school_year_id", "=", Number(selectedSchoolYearId))
+    .where("sygl.sy_gradelevel_status", "=", "active")
     .groupBy([
-      "sgl.sy_grade_level_id",
-      "gl.grade_level_id",
-      "gl.grade_level_name",
-      "sy.school_year_id",
+      "sygl.sy_grade_level_id",
+      "sygl.school_year_id",
+      "sygl.grade_level_id",
+      "sygl.sy_gradelevel_status",
+      "sy.sy_status",
       "sy.start_date",
       "sy.end_date",
+      "gl.grade_level_name",
     ])
-    .orderBy("gl.grade_level_id", "asc");
-
-  return await query.execute();
+    .orderBy("sy.start_date", "asc")
+    .orderBy("gl.grade_level_id", "asc")
+    .execute();
 };
 
 export const getSectionsByGradeLevel = async (sy_grade_level_id) => {

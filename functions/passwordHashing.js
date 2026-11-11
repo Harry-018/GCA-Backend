@@ -11,3 +11,4 @@ export const comparePassword = async (password, hashedPassword) => {
 };
 
 //parent@gmail.com, teacher@gmail.com  admin@gmail.com || password ng lahat benten
+// rafaelgargallo@gmail.com parent || password =  parentpass123

@@ -171,3 +171,205 @@ export const getTeacherSchedules = async (req, res) => {
     });
   }
 };
+
+export const getAssignedSections = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const result = await tm.getAssignedSectionForTeacher(user_id);
+
+    res.status(200).json({
+      success: true,
+      message: "Assigned sections retrieved successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("getAssignedSections error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve assigned sections.",
+    });
+  }
+};
+
+export const getAttendanceStudents = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+    const { section_id, date } = req.query;
+
+    if (!section_id || !date) {
+      return res.status(400).json({
+        success: false,
+        message: "Section ID and attendance date are required.",
+      });
+    }
+
+    const result = await tm.getAttendanceStudents(
+      user_id,
+      Number(section_id),
+      date,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Attendance students retrieved successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("getAttendanceStudents error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve attendance students.",
+    });
+  }
+};
+
+export const saveAttendance = async (req, res) => {
+  const isValidDate = (value) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return false;
+    }
+
+    const date = new Date(`${value}T00:00:00Z`);
+
+    return (
+      !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+    );
+  };
+
+  try {
+    const user_id = req.user.user_id;
+    const { section_id, date, attendance } = req.body;
+
+    if (!section_id || !date || !Array.isArray(attendance)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Section ID, attendance date, and attendance records are required.",
+      });
+    }
+
+    const parsedSectionId = Number(section_id);
+
+    if (!Number.isInteger(parsedSectionId) || parsedSectionId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid section ID.",
+      });
+    }
+
+    if (attendance.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No attendance records were provided.",
+      });
+    }
+
+    if (!isValidDate(date)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid attendance date. Use YYYY-MM-DD.",
+      });
+    }
+
+    const validStatuses = ["present", "absent"];
+
+    const invalidRecord = attendance.some(
+      (record) =>
+        !record ||
+        typeof record !== "object" ||
+        !Number.isInteger(Number(record.enrollment_id)) ||
+        Number(record.enrollment_id) <= 0 ||
+        !validStatuses.includes(record.attendance_status),
+    );
+
+    if (invalidRecord) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Attendance records contain invalid enrollment IDs or statuses.",
+      });
+    }
+
+    const result = await tm.saveAttendance(
+      user_id,
+      parsedSectionId,
+      date,
+      attendance,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Attendance saved successfully",
+      result: JSON.parse(
+        JSON.stringify(result, (key, value) =>
+          typeof value === "bigint" ? value.toString() : value,
+        ),
+      ),
+    });
+  } catch (error) {
+    console.error("saveAttendance error:", error);
+
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to save attendance.",
+    });
+  }
+};
+
+export const getMonthlyAttendanceReport = async (req, res) => {
+  try {
+    const { section_id, month, year } = req.query;
+
+    const sectionId = Number(section_id);
+    const reportMonth = Number(month);
+    const reportYear = Number(year);
+
+    if (!Number.isInteger(sectionId) || sectionId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid section_id is required.",
+      });
+    }
+
+    if (!Number.isInteger(reportMonth) || reportMonth < 1 || reportMonth > 12) {
+      return res.status(400).json({
+        success: false,
+        message: "Month must be between 1 and 12.",
+      });
+    }
+
+    if (
+      !Number.isInteger(reportYear) ||
+      reportYear < 2000 ||
+      reportYear > 2100
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid year is required.",
+      });
+    }
+
+    const report = await tm.getMonthlyAttendanceReport(
+      req.user.user_id,
+      sectionId,
+      reportMonth,
+      reportYear,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Monthly attendance report retrieved successfully.",
+      data: report,
+    });
+  } catch (error) {
+    console.error("getMonthlyAttendanceReport error:", error);
+
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to retrieve attendance report.",
+    });
+  }
+};

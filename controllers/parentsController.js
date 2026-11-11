@@ -39,3 +39,31 @@ export const getParentInfoByUserId = async (req, res) => {
     });
   }
 };
+
+export const getParentDashboard = async (req, res) => {
+  try {
+    const user_id = req.user?.user_id;
+
+    if (!user_id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized. Please log in again.",
+      });
+    }
+
+    const students = await pm.getParentDashboardStudents(user_id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Parent dashboard retrieved successfully.",
+      data: students,
+    });
+  } catch (error) {
+    console.error("Get Parent Dashboard Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve parent dashboard.",
+    });
+  }
+};
