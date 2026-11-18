@@ -39,8 +39,6 @@ export const createVerification = async (req, res) => {
       to: [{ email: req.body.email }],
     });
 
-    console.log(otp);
-
     res.status(201).json({
       message: "verification code sent",
       data: {

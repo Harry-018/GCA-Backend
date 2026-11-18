@@ -69,8 +69,9 @@ export const inviteAccount = async (req, res) => {
 export const disableAccount = async (req, res) => {
   try {
     const { user_id } = req.params;
+    const { reason } = req.body;
 
-    const result = await uam.disableAccount(Number(user_id));
+    const result = await uam.disableAccount(Number(user_id), reason);
 
     res.status(200).json({
       success: true,

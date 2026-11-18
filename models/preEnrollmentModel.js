@@ -3,6 +3,15 @@ import db from "../config/db.js";
 import * as ng from "../functions/NumberGenerator.js";
 import { getVerification } from "./emailVerificationModel.js";
 
+// Old clients may still submit PSGC codes instead of place names.
+const PSGC_ADDRESS_NAMES = {
+  "0402100000": "Cavite",
+  "0402120000": "Tanza",
+  "0402122000": "City of Trece Martires",
+};
+
+const resolveAddressName = (value) => PSGC_ADDRESS_NAMES[value] || value;
+
 const formatDateOnly = (date) => {
   if (!date) return null;
 
@@ -22,46 +31,7 @@ export const applyApplication = async (data) => {
     if (!verification.verified_at) {
       throw new Error("Email has not been verified.");
     }
-    const checkDuplicate = await trx
-      .selectFrom("applicant_info")
-      .select(["applicant_info_id"])
-      .where("first_name", "=", data.s_first_name)
-      .where("last_name", "=", data.s_last_name)
-      .where("middle_name", "=", data.s_mid_name)
-      .where("bdate", "=", data.s_bdate)
-      .executeTakeFirst();
-    if (checkDuplicate) {
-      throw new Error("Applicant already exists.");
-    }
-    const address = await trx
-      .insertInto("applicant_address")
-      .values({
-        province: data.province,
-        city_municipality: data.city_municipality,
-        barangay: data.barangay,
-        house_no: data.house_no,
-        zipcode: data.zipcode,
-      })
-      .executeTakeFirst();
-    const address_id = Number(address.insertId);
-    const info = await trx
-      .insertInto("applicant_info")
-      .values({
-        first_name: data.s_first_name,
-        last_name: data.s_last_name,
-        middle_name: data.s_mid_name,
-        gender: data.s_gender,
-        bdate: data.s_bdate,
-        birthplace: data.s_birthplace,
-        religion: data.s_religion,
-        nationality: data.s_nationality,
-        disabled: data.s_disabled,
-        disability: data.s_disability,
-        address_id,
-      })
-      .executeTakeFirst();
-    const info_id = Number(info.insertId);
-    const appNo = await ng.applicationNo(trx);
+
     const activeSY = await trx
       .selectFrom("school_years")
       .select("school_year_id")
@@ -70,51 +40,116 @@ export const applyApplication = async (data) => {
     if (!activeSY) {
       throw new Error("There is currently no active school year.");
     }
-    const application = await trx
-      .insertInto("applications")
-      .values({
-        application_no: appNo,
-        grade_level_id: data.grade_level_id,
-        school_year_id: activeSY.school_year_id,
-        applicant_info_id: info_id,
-        verification_id: data.verification_id,
-        application_status: data.application_status,
-        gradelevel_paymentoption_id: data.gradelevel_paymentoption_id,
-        rejection_reason_id: data.rejection_reason_id,
-      })
-      .executeTakeFirst();
-    const application_id = Number(application.insertId);
 
-    const parents = data.parents.filter((parent, index) => {
-      if (index < 2) return true;
+    // The form sends { verification_id, students: [...] }. Keep accepting a
+    // single flat payload as well for older clients/tests.
+    const students =
+      Array.isArray(data.students) && data.students.length > 0
+        ? data.students
+        : [data];
 
-      return parent.p_first_name || parent.p_last_name;
-    });
+    const applications = [];
 
-    for (const parent of parents) {
-      const parentInfo = await trx
-        .insertInto("parent_info")
+    for (const student of students) {
+      const checkDuplicate = await trx
+        .selectFrom("applicant_info")
+        .select(["applicant_info_id"])
+        .where("first_name", "=", student.s_first_name)
+        .where("last_name", "=", student.s_last_name)
+        .where("middle_name", "=", student.s_mid_name)
+        .where("bdate", "=", student.s_bdate)
+        .executeTakeFirst();
+      if (checkDuplicate) {
+        throw new Error("Applicant already exists.");
+      }
+
+      const address = await trx
+        .insertInto("applicant_address")
         .values({
-          first_name: parent.p_first_name,
-          last_name: parent.p_last_name,
-          middle_name: parent.p_middle_name,
-          contact_number: parent.p_contact_number,
-          occupation: parent.p_occupation,
-          email: parent.p_email,
+          province: resolveAddressName(student.province),
+          city_municipality: resolveAddressName(student.city_municipality),
+          barangay: resolveAddressName(student.barangay),
+          house_no: student.house_no,
+          zipcode: student.zipcode,
         })
         .executeTakeFirst();
-      const parent_id = Number(parentInfo.insertId);
-      await trx
-        .insertInto("applicant_parent")
+      const address_id = Number(address.insertId);
+
+      const info = await trx
+        .insertInto("applicant_info")
         .values({
-          application_id,
-          parent_info_id: parent_id,
-          relationship_type: parent.relationship_type,
-          will_receive_account: parent.will_receive_account,
+          first_name: student.s_first_name,
+          last_name: student.s_last_name,
+          middle_name: student.s_mid_name,
+          gender: student.s_gender,
+          bdate: student.s_bdate,
+          birthplace: student.s_birthplace,
+          religion: student.s_religion,
+          nationality: student.s_nationality,
+          disabled: student.s_disabled,
+          disability: student.s_disability,
+          address_id,
         })
         .executeTakeFirst();
+      const info_id = Number(info.insertId);
+
+      const appNo = await ng.applicationNo(trx);
+      const application = await trx
+        .insertInto("applications")
+        .values({
+          application_no: appNo,
+          grade_level_id: student.grade_level_id,
+          school_year_id: activeSY.school_year_id,
+          applicant_info_id: info_id,
+          verification_id: data.verification_id,
+          application_status: student.application_status,
+          gradelevel_paymentoption_id: student.gradelevel_paymentoption_id,
+          rejection_reason_id: student.rejection_reason_id,
+        })
+        .executeTakeFirst();
+      const application_id = Number(application.insertId);
+
+      const parents = Array.isArray(student.parents)
+        ? student.parents.filter((parent, index) => {
+            if (index < 2) return true;
+
+            return parent.p_first_name || parent.p_last_name;
+          })
+        : [];
+
+      for (const parent of parents) {
+        const parentInfo = await trx
+          .insertInto("parent_info")
+          .values({
+            first_name: parent.p_first_name,
+            last_name: parent.p_last_name,
+            middle_name: parent.p_middle_name,
+            contact_number: parent.p_contact_number,
+            occupation: parent.p_occupation,
+            email: parent.p_email,
+          })
+          .executeTakeFirst();
+        const parent_id = Number(parentInfo.insertId);
+        await trx
+          .insertInto("applicant_parent")
+          .values({
+            application_id,
+            parent_info_id: parent_id,
+            relationship_type: parent.relationship_type,
+            will_receive_account: parent.will_receive_account,
+          })
+          .executeTakeFirst();
+      }
+
+      applications.push({ application_id, application_no: appNo });
     }
-    return { application_id, application_no: appNo };
+
+    return {
+      applications,
+      // Keep the original fields for single-student callers.
+      application_id: applications[0]?.application_id ?? null,
+      application_no: applications[0]?.application_no ?? null,
+    };
   });
 };
 

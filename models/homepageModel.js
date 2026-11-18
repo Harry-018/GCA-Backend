@@ -23,6 +23,12 @@ export const getBanner = async () => {
         ).getFullYear()}`
       : null,
     enrollment_status: schoolYear?.enrollment_status ?? null,
+    school_start: schoolYear
+      ? new Date(schoolYear.start_date).toLocaleString("en-US", {
+          month: "long",
+          year: "numeric",
+        })
+      : null,
   };
 };
 

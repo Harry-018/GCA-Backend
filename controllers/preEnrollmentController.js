@@ -3,10 +3,12 @@ import * as pe from "../models/preEnrollmentModel.js";
 
 export const createApplication = async (req, res) => {
   try {
-    const application = await pe.applyApplication(req.body);
-    res
-      .status(201)
-      .json({ message: "Application Successful", data: application });
+    const result = await pe.applyApplication(req.body);
+    res.status(201).json({
+      message: "Application Successful",
+      data: result,
+      count: result.applications.length,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

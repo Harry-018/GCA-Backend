@@ -48,3 +48,11 @@ export const getEmailOfApprovedApplicant = async (application_id) => {
     .where("ev.verified_at", "is not", null)
     .executeTakeFirst();
 };
+
+export const getUserAccountEmail = async (user_id) => {
+  return await db
+    .selectFrom("user_accounts")
+    .select("email")
+    .where("user_id", "=", Number(user_id))
+    .executeTakeFirst();
+};

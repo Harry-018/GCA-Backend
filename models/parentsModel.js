@@ -107,11 +107,11 @@ export const getParentInfoByUserId = async (user_id) => {
   return await db
     .selectFrom("parent_info as pi")
     .innerJoin("user_accounts as ua", "ua.user_id", "pi.user_id")
-    // .innerJoin(
-    //   "applicant_parent as ap",
-    //   "ap.parent_info_id",
-    //   "pi.parent_info_id",
-    // )
+    .innerJoin(
+      "applicant_parent as ap",
+      "ap.parent_info_id",
+      "pi.parent_info_id",
+    )
     .select([
       "pi.parent_info_id",
       "pi.first_name",
@@ -124,12 +124,27 @@ export const getParentInfoByUserId = async (user_id) => {
       "ua.role",
       "ua.account_status",
       "ua.email as account_email",
-      // "ap.relationship_type",
+      "ap.relationship_type",
     ])
     .where("ua.user_id", "=", Number(user_id))
     .where("ua.role", "=", "parent")
     .executeTakeFirst();
 };
+
+export const editParentInfo = async (user_id, data) => {
+  const { contact_number, email } = data;
+
+  return await db
+    .updateTable("parent_info")
+    .set({
+      contact_number,
+      email,
+    })
+    .where("user_id", "=", Number(user_id))
+    .executeTakeFirst();
+};
+
+// from here on out. not tested yet
 
 export const getParentDashboardStudents = async (user_id) => {
   // Step 1: Get the parent's students and their current enrollment
@@ -192,9 +207,14 @@ export const getParentDashboardStudents = async (user_id) => {
       "e.date_enrolled",
 
       "sy.school_year_id",
+      sql`CONCAT(YEAR(sy.start_date), ' - ', YEAR(sy.end_date))`.as(
+        "school_year",
+      ),
+
       "sy.sy_status",
 
       "gl.grade_level_id",
+      "gl.grade_level_name",
 
       "sec.section_id",
       "snv.section_name",
@@ -243,8 +263,9 @@ export const getParentDashboardStudents = async (user_id) => {
         "sc.section_id",
         "su.subject_name",
         "wd.day_name",
-        "st.start_time",
-        "st.end_time",
+        sql`CONCAT(st.sched_start_time, ' - ', st.sched_end_time)`.as(
+          "class_time",
+        ),
         "r.room_name",
         "ti.first_name as teacher_first_name",
         "ti.middle_name as teacher_middle_name",
@@ -252,7 +273,7 @@ export const getParentDashboardStudents = async (user_id) => {
       ])
       .where("sc.section_id", "in", sectionIds)
       .orderBy("wd.day_id")
-      .orderBy("st.start_time")
+      .orderBy("st.sched_start_time")
       .execute();
   }
 
@@ -280,6 +301,9 @@ export const getParentDashboardStudents = async (user_id) => {
     return {
       studentId: student.stu_num,
       stuId: student.stu_id,
+      firstName: student.first_name,
+      middleName: student.middle_name,
+      lastName: student.last_name,
       fullName,
       lrn: student.lrn,
 
@@ -293,10 +317,12 @@ export const getParentDashboardStudents = async (user_id) => {
 
       schoolYear: {
         schoolYearId: student.school_year_id,
+        schoolYear: student.school_year,
         status: student.sy_status,
       },
 
       gradeLevelId: student.grade_level_id,
+      gradeLevel: student.grade_level_name,
       adviser: adviser || null,
 
       // Keep the full schedule information for the frontend
@@ -304,8 +330,7 @@ export const getParentDashboardStudents = async (user_id) => {
         scheduleId: schedule.schedule_id,
         subject: schedule.subject_name,
         day: schedule.day_name,
-        startTime: schedule.start_time,
-        endTime: schedule.end_time,
+        class_time: schedule.class_time,
         room: schedule.room_name,
         teacher: [
           schedule.teacher_first_name,
@@ -319,5 +344,346 @@ export const getParentDashboardStudents = async (user_id) => {
   });
 };
 
-const r = await getParentDashboardStudents(240001);
-console.log(r);
+export const getAnnouncements = async (user_id) => {
+  const announcements = await db
+    .selectFrom("announcements as a")
+    .innerJoin(
+      "schoolyears_gradelevels as sygl",
+      "sygl.sy_grade_level_id",
+      "a.sy_grade_level_id",
+    )
+    .innerJoin("school_years as sy", "sy.school_year_id", "sygl.school_year_id")
+    .innerJoin(
+      "enrollment as e",
+      "e.sy_grade_level_id",
+      "sygl.sy_grade_level_id",
+    )
+    .innerJoin("students as stu", "stu.stu_id", "e.stu_id")
+    .innerJoin("submissions as sub", "sub.submission_id", "stu.submission_id")
+    .innerJoin(
+      "app_approval as aa",
+      "aa.app_approval_id",
+      "sub.app_approval_id",
+    )
+    .innerJoin("applications as app", "app.application_id", "aa.application_id")
+    .innerJoin(
+      "applicant_parent as ap",
+      "ap.application_id",
+      "app.application_id",
+    )
+    .innerJoin("parent_info as pi", "pi.parent_info_id", "ap.parent_info_id")
+    .select([
+      "a.announcement_id",
+      "a.title",
+      "a.posted_at",
+      "a.body",
+      "a.event_date",
+      "a.start_time",
+      "a.end_time",
+      "a.venue",
+      "a.sy_grade_level_id",
+    ])
+    .distinct()
+    .where("pi.user_id", "=", user_id)
+    .where("stu.stu_status", "=", "active")
+    .where("e.enr_status", "=", "enrolled")
+    .where("sy.sy_status", "=", "active")
+    .where("sygl.sy_gradelevel_status", "=", "active")
+    .orderBy("a.posted_at", "desc")
+    .execute();
+
+  return announcements.map((announcement) => ({
+    announcement_id: announcement.announcement_id,
+    title: announcement.title,
+    posted: announcement.posted_at,
+    message: announcement.body,
+    date: announcement.event_date,
+    time:
+      announcement.start_time && announcement.end_time
+        ? `${announcement.start_time} - ${announcement.end_time}`
+        : announcement.start_time || announcement.end_time || null,
+    venue: announcement.venue,
+  }));
+};
+
+export const getStudentSubjects = async (user_id, stu_id) => {
+  // Step 1: Verify parent ownership and retrieve active enrollment.
+  const enrollment = await db
+    .selectFrom("parent_info as pi")
+    .innerJoin(
+      "applicant_parent as ap",
+      "ap.parent_info_id",
+      "pi.parent_info_id",
+    )
+    .innerJoin("applications as a", "a.application_id", "ap.application_id")
+    .innerJoin("app_approval as aa", "aa.application_id", "a.application_id")
+    .innerJoin(
+      "submissions as sub",
+      "sub.app_approval_id",
+      "aa.app_approval_id",
+    )
+    .innerJoin("students as stu", "stu.submission_id", "sub.submission_id")
+    .innerJoin("enrollment as e", "e.stu_id", "stu.stu_id")
+    .innerJoin(
+      "schoolyears_gradelevels as sygl",
+      "sygl.sy_grade_level_id",
+      "e.sy_grade_level_id",
+    )
+    .innerJoin("school_years as sy", "sy.school_year_id", "sygl.school_year_id")
+    .select(["e.enrollment_id", "e.sy_grade_level_id"])
+    .where("pi.user_id", "=", user_id)
+    .where("stu.stu_id", "=", stu_id)
+    .where("stu.stu_status", "=", "active")
+    .where("e.enr_status", "=", "enrolled")
+    .where("sy.sy_status", "=", "active")
+    .where("sygl.sy_gradelevel_status", "=", "active")
+    .executeTakeFirst();
+
+  if (!enrollment) return null;
+
+  // Step 2: Retrieve active subjects assigned to the student's grade level.
+  return await db
+    .selectFrom("schoolyears_gradelevels_subjects as sygls")
+    .innerJoin(
+      "subject_versions as sv",
+      "sv.subject_version_id",
+      "sygls.subject_version_id",
+    )
+    .select([
+      "sygls.sy_gradelevel_subject_id",
+      "sygls.subject_id",
+      "sv.subject_name",
+    ])
+    .where("sygls.sy_grade_level_id", "=", enrollment.sy_grade_level_id)
+    .where("sygls.sy_gradelevel_subject_status", "=", "active")
+    .orderBy("sv.subject_name")
+    .execute();
+};
+
+export const getStudentSubjectGrades = async (
+  user_id,
+  stu_id,
+  subject_id,
+  quarter_id,
+) => {
+  // Step 1: Verify parent ownership and retrieve active enrollment.
+  const enrollment = await db
+    .selectFrom("parent_info as pi")
+    .innerJoin(
+      "applicant_parent as ap",
+      "ap.parent_info_id",
+      "pi.parent_info_id",
+    )
+    .innerJoin("applications as a", "a.application_id", "ap.application_id")
+    .innerJoin("app_approval as aa", "aa.application_id", "a.application_id")
+    .innerJoin(
+      "submissions as sub",
+      "sub.app_approval_id",
+      "aa.app_approval_id",
+    )
+    .innerJoin("students as stu", "stu.submission_id", "sub.submission_id")
+    .innerJoin("enrollment as e", "e.stu_id", "stu.stu_id")
+    .innerJoin(
+      "schoolyears_gradelevels as sygl",
+      "sygl.sy_grade_level_id",
+      "e.sy_grade_level_id",
+    )
+    .innerJoin("school_years as sy", "sy.school_year_id", "sygl.school_year_id")
+    .select(["e.enrollment_id", "e.sy_grade_level_id"])
+    .where("pi.user_id", "=", user_id)
+    .where("stu.stu_id", "=", stu_id)
+    .where("stu.stu_status", "=", "active")
+    .where("e.enr_status", "=", "enrolled")
+    .where("sy.sy_status", "=", "active")
+    .where("sygl.sy_gradelevel_status", "=", "active")
+    .executeTakeFirst();
+
+  if (!enrollment) return null;
+
+  // Step 2: Retrieve the selected quarter.
+  const quarter = await db
+    .selectFrom("quarter")
+    .select(["quarter_id", "quarter_name"])
+    .where("quarter_id", "=", quarter_id)
+    .executeTakeFirst();
+
+  if (!quarter) return null;
+
+  // Step 3: Retrieve the selected subject's skills and grades.
+  const grades = await db
+    .selectFrom("schoolyears_gradelevels_subjects as sygls")
+    .innerJoin(
+      "subject_versions as sv",
+      "sv.subject_version_id",
+      "sygls.subject_version_id",
+    )
+    .innerJoin(
+      "schoolyears_gradelevels_subjects_skills as syglss",
+      "syglss.sy_gradelevel_subject_id",
+      "sygls.sy_gradelevel_subject_id",
+    )
+    .innerJoin("skill as sk", (join) =>
+      join
+        .onRef("sk.skill_id", "=", "syglss.skill_id")
+        .onRef("sk.subject_id", "=", "sygls.subject_id"),
+    )
+    .leftJoin("student_grades as sg", (join) =>
+      join
+        .on("sg.enrollment_id", "=", enrollment.enrollment_id)
+        .onRef("sg.skill_id", "=", "sk.skill_id")
+        .on("sg.quarter_id", "=", quarter_id),
+    )
+    .select([
+      "sygls.subject_id",
+      "sv.subject_name",
+
+      "sk.skill_id",
+      "sk.skill_name",
+      "sk.description",
+
+      "sg.student_grade_id",
+      "sg.grade",
+      "sg.date_recorded",
+    ])
+    .where("sygls.sy_grade_level_id", "=", enrollment.sy_grade_level_id)
+    .where("sygls.subject_id", "=", subject_id)
+    .where("sygls.sy_gradelevel_subject_status", "=", "active")
+    .where("syglss.skill_status", "=", "active")
+    .where("sk.skill_status", "=", "active")
+    .orderBy("sk.skill_name")
+    .execute();
+
+  if (grades.length === 0) return null;
+
+  // Step 4: Retrieve the overall quarterly remark.
+  const remark = await db
+    .selectFrom("quarterly_remarks as qr")
+    .select(["qr.remark_id", "qr.comment", "qr.date_recorded"])
+    .where("qr.enrollment_id", "=", enrollment.enrollment_id)
+    .where("qr.quarter_id", "=", quarter_id)
+    .executeTakeFirst();
+
+  // Step 5: Return the complete result.
+  return {
+    student_id: stu_id,
+    enrollment_id: enrollment.enrollment_id,
+
+    subject: {
+      subject_id: grades[0].subject_id,
+      subject_name: grades[0].subject_name,
+    },
+
+    quarter: {
+      quarter_id: quarter.quarter_id,
+      quarter_name: quarter.quarter_name,
+    },
+
+    skills: grades.map((item) => ({
+      skill_id: item.skill_id,
+      skill_name: item.skill_name,
+      description: item.description,
+      grade: item.grade,
+      date_recorded: item.date_recorded,
+    })),
+
+    remarks: remark
+      ? {
+          remark_id: remark.remark_id,
+          comment: remark.comment,
+          date_recorded: remark.date_recorded,
+        }
+      : null,
+  };
+};
+
+export const getStudentTeacherRemarks = async (user_id, stu_id, quarter_id) => {
+  // Step 1: Verify parent ownership and retrieve active enrollment.
+  const enrollment = await db
+    .selectFrom("parent_info as pi")
+    .innerJoin(
+      "applicant_parent as ap",
+      "ap.parent_info_id",
+      "pi.parent_info_id",
+    )
+    .innerJoin("applications as a", "a.application_id", "ap.application_id")
+    .innerJoin("app_approval as aa", "aa.application_id", "a.application_id")
+    .innerJoin(
+      "submissions as sub",
+      "sub.app_approval_id",
+      "aa.app_approval_id",
+    )
+    .innerJoin("students as stu", "stu.submission_id", "sub.submission_id")
+    .innerJoin("enrollment as e", "e.stu_id", "stu.stu_id")
+    .innerJoin(
+      "schoolyears_gradelevels as sygl",
+      "sygl.sy_grade_level_id",
+      "e.sy_grade_level_id",
+    )
+    .innerJoin("school_years as sy", "sy.school_year_id", "sygl.school_year_id")
+    .select(["e.enrollment_id", "stu.stu_id"])
+    .where("pi.user_id", "=", user_id)
+    .where("stu.stu_id", "=", stu_id)
+    .where("stu.stu_status", "=", "active")
+    .where("e.enr_status", "=", "enrolled")
+    .where("sy.sy_status", "=", "active")
+    .where("sygl.sy_gradelevel_status", "=", "active")
+    .executeTakeFirst();
+
+  if (!enrollment) return null;
+
+  // Step 2: Retrieve the selected quarter.
+  const quarter = await db
+    .selectFrom("quarter")
+    .select(["quarter_id", "quarter_name"])
+    .where("quarter_id", "=", quarter_id)
+    .executeTakeFirst();
+
+  if (!quarter) return null;
+
+  // Step 3: Retrieve the teacher's overall remark.
+  const remark = await db
+    .selectFrom("quarterly_remarks as qr")
+    .innerJoin("teachers as t", "t.teacher_id", "qr.recorded_by")
+    .innerJoin("teacher_info as ti", "ti.teacher_info_id", "t.teacher_info_id")
+    .select([
+      "qr.remark_id",
+      "qr.comment",
+      "qr.date_recorded",
+
+      "ti.first_name as teacher_first_name",
+      "ti.middle_name as teacher_middle_name",
+      "ti.last_name as teacher_last_name",
+    ])
+    .where("qr.enrollment_id", "=", enrollment.enrollment_id)
+    .where("qr.quarter_id", "=", quarter_id)
+    .executeTakeFirst();
+
+  // Step 4: Return the result.
+  return {
+    student_id: stu_id,
+    enrollment_id: enrollment.enrollment_id,
+
+    quarter: {
+      quarter_id: quarter.quarter_id,
+      quarter_name: quarter.quarter_name,
+    },
+
+    remarks: remark
+      ? {
+          remark_id: remark.remark_id,
+          comment: remark.comment,
+          date_recorded: remark.date_recorded,
+          teacher: [
+            remark.teacher_first_name,
+            remark.teacher_middle_name,
+            remark.teacher_last_name,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        }
+      : null,
+  };
+};
+
+const r = await getStudentSubjects(240003, 330001);
+console.log("students", r);

@@ -1,6 +1,7 @@
 import * as auth from "../models/auth.js";
 import { generateToken } from "../functions/tokenGenerator.js";
 import { comparePassword } from "../functions/passwordHashing.js";
+import { logAdminActivity } from "../models/activityLogsModel.js";
 
 export const authenticateUser = async (req, res) => {
   try {
@@ -11,10 +12,7 @@ export const authenticateUser = async (req, res) => {
         message: "email and password are required",
       });
     }
-    console.log("1. Getting account");
     const account = await auth.getAccount(email);
-
-    console.log("2. Account:", account);
 
     if (!account) {
       return res.status(400).json({ message: "email or password incorrect" });
@@ -25,7 +23,6 @@ export const authenticateUser = async (req, res) => {
         .status(403)
         .json({ message: "Account is pending or disabled" });
     }
-    console.log("3. Comparing password");
 
     const isMatch = await comparePassword(password, account.password);
 
@@ -35,7 +32,14 @@ export const authenticateUser = async (req, res) => {
         .json({ message: "Email or password is incorrect" });
     }
 
-    console.log("4. Password match:", isMatch);
+    if (isMatch && account.role === "admin") {
+      await logAdminActivity({
+        user_id: account.user_id,
+        user_action: "Logged In",
+        user_module: "Authentication",
+        description: "Admin successfully logged in.",
+      });
+    }
 
     const token = generateToken(
       {

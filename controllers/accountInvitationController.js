@@ -13,15 +13,11 @@ export const createAccountInvitation = async (req, res) => {
 
     const invitation = await aim.createAccountInvitation(Number(user_id));
 
-    console.log("INVITATION CREATED:", invitation);
-
     try {
       await sendAccountActivationEmail({
         email: invitation.email,
         token: invitation.token,
       });
-
-      console.log("EMAIL SENT");
     } catch (emailError) {
       console.error("EMAIL ERROR:", emailError);
 

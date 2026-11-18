@@ -3,7 +3,10 @@ import { BrevoClient } from "@getbrevo/brevo";
 import { render } from "@react-email/render";
 import ApplicationApprovalEmail from "./ApplicationApproval.js";
 import TuitionReminderEmail from "./tuitionReminder.js";
-import { getEmailOfApprovedApplicant } from "../models/emailVerificationModel.js";
+import {
+  getEmailOfApprovedApplicant,
+  getUserAccountEmail,
+} from "../models/emailVerificationModel.js";
 
 const brevo = new BrevoClient({
   apiKey: process.env.BREVO_API_KEY,
@@ -121,5 +124,40 @@ export const sendTuitionReminder = async ({
     htmlContent: html,
     sender,
     to: [{ email }],
+  });
+};
+
+export const sendAccountDisabledEmail = async ({ user_id, reason }) => {
+  const account = await getUserAccountEmail(user_id);
+
+  if (!account?.email) {
+    throw new Error("Account email not found.");
+  }
+
+  if (!reason?.trim()) {
+    throw new Error("Disable reason is required.");
+  }
+
+  await brevo.transactionalEmails.sendTransacEmail({
+    subject: "Account Disabled - Grace Christian Academy",
+
+    textContent: `Hello,
+
+Your Grace Christian Academy account has been disabled.
+
+Reason for disabling your account:
+${reason}
+
+If you believe this action was made in error or have questions regarding your account, please contact the school administration.
+
+Grace Christian Academy`,
+
+    sender,
+
+    to: [
+      {
+        email: account.email,
+      },
+    ],
   });
 };
