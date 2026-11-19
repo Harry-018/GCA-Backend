@@ -21,6 +21,7 @@ import trr from "./routes/transportationRoutes.js";
 import tuir from "./routes/tuitionRoutes.js";
 import dash from "./routes/dashboardRoutes.js";
 import logs from "./routes/activityLogsRoute.js";
+import inq from "./routes/guestInquiryRoute.js";
 dotenv.config();
 
 console.log("Starting server...");
@@ -50,6 +51,7 @@ app.use("/api/transportation", trr);
 app.use("/api/tuition", tuir);
 app.use("/api/dashboard", dash);
 app.use("/api/activity-logs", logs);
+app.use("/api/inquire", inq);
 
 const PORT = process.env.PORT || 5000;
 

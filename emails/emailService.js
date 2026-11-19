@@ -161,3 +161,38 @@ Grace Christian Academy`,
     ],
   });
 };
+
+export const sendInquiryReplyEmail = async ({
+  name,
+  email,
+  question,
+  answer,
+}) => {
+  if (!email) {
+    throw new Error("Recipient email is required.");
+  }
+
+  await brevo.transactionalEmails.sendTransacEmail({
+    subject: "Response to Your Inquiry - Grace Christian Academy",
+
+    textContent: `Hello ${name || "Parent"},
+
+Thank you for contacting Grace Christian Academy.
+
+Here is our response to your inquiry:
+
+Your question:
+${question}
+
+Our response:
+${answer}
+
+If you have additional questions, feel free to contact us again.
+
+Grace Christian Academy`,
+
+    sender,
+
+    to: [{ email }],
+  });
+};
