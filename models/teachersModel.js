@@ -150,11 +150,6 @@ export const updateTeacher = async (teacher_id, data) => {
   };
 };
 
-//ACCOUNT SETTINGS
-
-// TEACHER PORTAL INFORMATION
-//get teacher info by account id(user_id)
-
 export const getTeacherInfoByUserId = async (user_id) => {
   const teacher = await db
     .selectFrom("teachers as t")
@@ -665,5 +660,589 @@ export const getMonthlyAttendanceReport = async (
     year,
     dates,
     students: reportStudents,
+  };
+};
+
+// Get students, skills, and existing grades for the CSV template
+export const getStudentGradesOfSection = async (
+  user_id,
+  section_id,
+  subject_id,
+  quarter_id,
+) => {
+  // 1. Verify that the teacher is the section adviser
+  const section = await db
+    .selectFrom("teacher_info as ti")
+    .innerJoin("teachers as t", "t.teacher_info_id", "ti.teacher_info_id")
+    .innerJoin("sections as s", "s.adviser_teacher_id", "t.teacher_id")
+    .select(["s.section_id", "s.sy_grade_level_id", "s.adviser_teacher_id"])
+    .where("ti.user_id", "=", Number(user_id))
+    .where("s.section_id", "=", Number(section_id))
+    .where("s.section_status", "=", "active")
+    .executeTakeFirst();
+
+  if (!section) {
+    throw new Error("Section not found or you are not its adviser.");
+  }
+
+  // 2. Verify that the subject is assigned to the section's grade level
+  const subject = await db
+    .selectFrom("schoolyears_gradelevels_subjects as sgs")
+    .innerJoin("subjects as sub", "sub.subject_id", "sgs.subject_id")
+    .select([
+      "sgs.sy_gradelevel_subject_id",
+      "sgs.subject_id",
+      "sub.subject_name",
+    ])
+    .where("sgs.sy_grade_level_id", "=", section.sy_grade_level_id)
+    .where("sgs.subject_id", "=", Number(subject_id))
+    .where("sgs.sy_gradelevel_subject_status", "=", "active")
+    .executeTakeFirst();
+
+  if (!subject) {
+    throw new Error("Subject is not assigned to this section's grade level.");
+  }
+
+  // 3. Verify that the quarter is configured for this subject
+  const quarter = await db
+    .selectFrom("quarter_subjects as qs")
+    .innerJoin("quarter as q", "q.quarter_id", "qs.quarter_id")
+    .select(["q.quarter_id", "q.quarter_name"])
+    .where("qs.sy_gradelevel_subject_id", "=", subject.sy_gradelevel_subject_id)
+    .where("qs.quarter_id", "=", Number(quarter_id))
+    .executeTakeFirst();
+
+  if (!quarter) {
+    throw new Error("Quarter is not configured for this subject.");
+  }
+
+  // 4. Retrieve active skills assigned to this subject
+  const skills = await db
+    .selectFrom("schoolyears_gradelevels_subjects_skills as sgss")
+    .innerJoin("skill as sk", "sk.skill_id", "sgss.skill_id")
+    .select(["sk.skill_id", "sk.skill_name"])
+    .where(
+      "sgss.sy_gradelevel_subject_id",
+      "=",
+      subject.sy_gradelevel_subject_id,
+    )
+    .where("sgss.skill_status", "=", "active")
+    .where("sk.skill_status", "=", "active")
+    .orderBy("sk.skill_name", "asc")
+    .execute();
+
+  if (skills.length === 0) {
+    throw new Error("No active skills are assigned to this subject.");
+  }
+
+  // 5. Retrieve currently enrolled students in the selected section
+  const students = await db
+    .selectFrom("enrollment as e")
+    .innerJoin("students as st", "st.stu_id", "e.stu_id")
+    .innerJoin("submissions as sub", "st.submission_id", "sub.submission_id")
+    .innerJoin(
+      "app_approval as aa",
+      "sub.app_approval_id",
+      "aa.app_approval_id",
+    )
+    .innerJoin("applications as a", "aa.application_id", "a.application_id")
+    .innerJoin(
+      "applicant_info as ai",
+      "a.applicant_info_id",
+      "ai.applicant_info_id",
+    )
+    .select([
+      "e.enrollment_id",
+      "e.stu_id",
+      "st.stu_num",
+      "st.lrn",
+      "ai.first_name",
+      "ai.middle_name",
+      "ai.last_name",
+    ])
+    .where("e.section_id", "=", Number(section_id))
+    .where("e.sy_grade_level_id", "=", section.sy_grade_level_id)
+    .where("e.enr_status", "=", "enrolled")
+    .where("st.stu_status", "=", "active")
+    .orderBy("ai.last_name", "asc")
+    .orderBy("ai.first_name", "asc")
+    .execute();
+
+  // 6. Retrieve existing grades for these students and skills
+  const enrollmentIds = students.map((student) => student.enrollment_id);
+
+  const skillIds = skills.map((skill) => skill.skill_id);
+
+  let existingGrades = [];
+
+  if (enrollmentIds.length > 0 && skillIds.length > 0) {
+    existingGrades = await db
+      .selectFrom("student_grades")
+      .select([
+        "enrollment_id",
+        "skill_id",
+        "quarter_id",
+        "grade",
+        "date_recorded",
+      ])
+      .where("quarter_id", "=", Number(quarter_id))
+      .where("enrollment_id", "in", enrollmentIds)
+      .where("skill_id", "in", skillIds)
+      .execute();
+  }
+
+  // 7. Return the template data
+  return {
+    section_id: Number(section_id),
+    subject: {
+      subject_id: Number(subject.subject_id),
+      subject_name: subject.subject_name,
+      sy_gradelevel_subject_id: subject.sy_gradelevel_subject_id,
+    },
+    quarter,
+    skills,
+    students: students.map((student) => ({
+      enrollment_id: student.enrollment_id,
+      stu_id: student.stu_id,
+      stu_num: student.stu_num,
+      lrn: student.lrn,
+
+      student_name: [student.last_name, student.first_name, student.middle_name]
+        .filter(Boolean)
+        .join(", "),
+
+      grades: existingGrades
+        .filter((grade) => grade.enrollment_id === student.enrollment_id)
+        .map((grade) => ({
+          skill_id: grade.skill_id,
+          grade: grade.grade,
+          date_recorded: grade.date_recorded,
+        })),
+    })),
+  };
+};
+
+// Upload grades to students
+export const uploadGradesToStudents = async (
+  user_id,
+  section_id,
+  subject_id,
+  quarter_id,
+  grades,
+) => {
+  // 1. Retrieve and validate the section
+  const section = await db
+    .selectFrom("teacher_info as ti")
+    .innerJoin("teachers as t", "t.teacher_info_id", "ti.teacher_info_id")
+    .innerJoin("sections as s", "s.adviser_teacher_id", "t.teacher_id")
+    .select(["s.section_id", "s.sy_grade_level_id", "s.adviser_teacher_id"])
+    .where("ti.user_id", "=", Number(user_id))
+    .where("s.section_id", "=", Number(section_id))
+    .where("s.section_status", "=", "active")
+    .executeTakeFirst();
+
+  if (!section) {
+    throw new Error("Section not found or you are not its adviser.");
+  }
+
+  // 2. Verify subject assignment
+  const subject = await db
+    .selectFrom("schoolyears_gradelevels_subjects")
+    .select("sy_gradelevel_subject_id")
+    .where("sy_grade_level_id", "=", section.sy_grade_level_id)
+    .where("subject_id", "=", Number(subject_id))
+    .where("sy_gradelevel_subject_status", "=", "active")
+    .executeTakeFirst();
+
+  if (!subject) {
+    throw new Error("Invalid subject for this section.");
+  }
+
+  // 3. Verify quarter configuration
+  const quarter = await db
+    .selectFrom("quarter_subjects")
+    .select("quarter_subject_id")
+    .where("sy_gradelevel_subject_id", "=", subject.sy_gradelevel_subject_id)
+    .where("quarter_id", "=", Number(quarter_id))
+    .executeTakeFirst();
+
+  if (!quarter) {
+    throw new Error("Invalid quarter for this subject.");
+  }
+
+  // 4. Retrieve valid skills
+  const skills = await db
+    .selectFrom("schoolyears_gradelevels_subjects_skills as sgss")
+    .innerJoin("skill as sk", "sk.skill_id", "sgss.skill_id")
+    .select("sk.skill_id")
+    .where(
+      "sgss.sy_gradelevel_subject_id",
+      "=",
+      subject.sy_gradelevel_subject_id,
+    )
+    .where("sgss.skill_status", "=", "active")
+    .where("sk.skill_status", "=", "active")
+    .execute();
+
+  const validSkillIds = new Set(skills.map((skill) => Number(skill.skill_id)));
+
+  // 5. Retrieve valid enrolled students
+  const enrolledStudents = await db
+    .selectFrom("enrollment")
+    .select("enrollment_id")
+    .where("section_id", "=", Number(section_id))
+    .where("sy_grade_level_id", "=", section.sy_grade_level_id)
+    .where("enr_status", "=", "enrolled")
+    .execute();
+
+  const validEnrollmentIds = new Set(
+    enrolledStudents.map((student) => Number(student.enrollment_id)),
+  );
+
+  // 6. Validate uploaded JSON
+  if (!Array.isArray(grades) || grades.length === 0) {
+    throw new Error("No grades were provided.");
+  }
+
+  const records = [];
+  const seen = new Set();
+
+  for (const student of grades) {
+    const enrollmentId = Number(student.enrollment_id);
+
+    if (!validEnrollmentIds.has(enrollmentId)) {
+      throw new Error(`Invalid enrollment ID: ${student.enrollment_id}`);
+    }
+
+    if (!Array.isArray(student.grades)) {
+      throw new Error(`Invalid grades format for enrollment ${enrollmentId}.`);
+    }
+
+    for (const item of student.grades) {
+      const skillId = Number(item.skill_id);
+      const grade = String(item.grade ?? "")
+        .trim()
+        .toLowerCase();
+
+      if (!validSkillIds.has(skillId)) {
+        throw new Error(`Invalid skill ID: ${item.skill_id}`);
+      }
+
+      if (!["a", "b", "c", "d", "e"].includes(grade)) {
+        throw new Error(
+          `Invalid grade "${item.grade}" for enrollment ${enrollmentId}.`,
+        );
+      }
+
+      const key = `${enrollmentId}-${skillId}`;
+
+      if (seen.has(key)) {
+        throw new Error(
+          `Duplicate grade entry for enrollment ${enrollmentId} and skill ${skillId}.`,
+        );
+      }
+
+      seen.add(key);
+
+      records.push({
+        enrollment_id: enrollmentId,
+        skill_id: skillId,
+        quarter_id: Number(quarter_id),
+        grade,
+        date_recorded: sql`CURRENT_DATE`,
+      });
+    }
+  }
+
+  // 7. Save all grades in one transaction
+  return await db.transaction().execute(async (trx) => {
+    for (const record of records) {
+      await trx
+        .insertInto("student_grades")
+        .values(record)
+        .onDuplicateKeyUpdate({
+          grade: record.grade,
+          date_recorded: sql`CURRENT_DATE`,
+        })
+        .execute();
+    }
+
+    return {
+      uploaded_count: records.length,
+      message: "Student grades uploaded successfully.",
+    };
+  });
+};
+
+// GET available quarters for the logged-in teacher
+export const getTeacherGradingQuarters = async (user_id) => {
+  return await db
+    .selectFrom("quarter as q")
+    .innerJoin("quarter_subjects as qs", "qs.quarter_id", "q.quarter_id")
+    .innerJoin(
+      "schoolyears_gradelevels_subjects as sgs",
+      "sgs.sy_gradelevel_subject_id",
+      "qs.sy_gradelevel_subject_id",
+    )
+    .innerJoin(
+      "schoolyears_gradelevels as sygl",
+      "sygl.sy_grade_level_id",
+      "sgs.sy_grade_level_id",
+    )
+    .innerJoin("school_years as sy", "sy.school_year_id", "sygl.school_year_id")
+    .innerJoin("sections as s", "s.sy_grade_level_id", "sygl.sy_grade_level_id")
+    .innerJoin("teachers as t", "t.teacher_id", "s.adviser_teacher_id")
+    .innerJoin("teacher_info as ti", "ti.teacher_info_id", "t.teacher_info_id")
+    .where("ti.user_id", "=", user_id)
+    .where("s.section_status", "=", "active")
+    .where("sygl.sy_gradelevel_status", "=", "active")
+    .where("sgs.sy_gradelevel_subject_status", "=", "active")
+    .where("sy.sy_status", "=", "active")
+    .select(["q.quarter_id", "q.quarter_name"])
+    .distinct()
+    .orderBy("q.quarter_id")
+    .execute();
+};
+
+// GET subjects available for the selected quarter
+export const getTeacherGradingSubjects = async (user_id, quarter_id) => {
+  return await db
+    .selectFrom("quarter_subjects as qs")
+    .innerJoin("quarter as q", "q.quarter_id", "qs.quarter_id")
+    .innerJoin(
+      "schoolyears_gradelevels_subjects as sgs",
+      "sgs.sy_gradelevel_subject_id",
+      "qs.sy_gradelevel_subject_id",
+    )
+    .innerJoin("subjects as sub", "sub.subject_id", "sgs.subject_id")
+    .innerJoin(
+      "schoolyears_gradelevels as sygl",
+      "sygl.sy_grade_level_id",
+      "sgs.sy_grade_level_id",
+    )
+    .innerJoin("school_years as sy", "sy.school_year_id", "sygl.school_year_id")
+    .innerJoin("sections as s", "s.sy_grade_level_id", "sygl.sy_grade_level_id")
+    .innerJoin("teachers as t", "t.teacher_id", "s.adviser_teacher_id")
+    .innerJoin("teacher_info as ti", "ti.teacher_info_id", "t.teacher_info_id")
+    .where("ti.user_id", "=", user_id)
+    .where("q.quarter_id", "=", quarter_id)
+    .where("s.section_status", "=", "active")
+    .where("sygl.sy_gradelevel_status", "=", "active")
+    .where("sgs.sy_gradelevel_subject_status", "=", "active")
+    .where("sy.sy_status", "=", "active")
+    .select(["sub.subject_id", "sub.subject_name"])
+    .distinct()
+    .orderBy("sub.subject_name")
+    .execute();
+};
+
+export const uploadQuarterlyRemarks = async (
+  user_id,
+  section_id,
+  quarter_id,
+  remarks,
+) => {
+  // 1. Validate the teacher and section ownership
+  const teacherSection = await db
+    .selectFrom("teacher_info as ti")
+    .innerJoin("teachers as t", "t.teacher_info_id", "ti.teacher_info_id")
+    .innerJoin("sections as s", "s.adviser_teacher_id", "t.teacher_id")
+    .select(["t.teacher_id", "s.section_id"])
+    .where("ti.user_id", "=", user_id)
+    .where("s.section_id", "=", section_id)
+    .where("s.section_status", "=", "active")
+    .executeTakeFirst();
+
+  if (!teacherSection) {
+    throw new Error(
+      "You are not authorized to upload remarks for this section.",
+    );
+  }
+
+  const teacher_id = Number(teacherSection.teacher_id);
+
+  // 2. Validate quarter
+  const quarter = await db
+    .selectFrom("quarter")
+    .select("quarter_id")
+    .where("quarter_id", "=", quarter_id)
+    .executeTakeFirst();
+
+  if (!quarter) {
+    throw new Error("Invalid grading quarter.");
+  }
+
+  // 3. Validate remarks
+  if (!Array.isArray(remarks) || remarks.length === 0) {
+    throw new Error("No remarks were provided.");
+  }
+
+  const remarkMap = new Map();
+
+  for (const item of remarks) {
+    const enrollment_id = Number(item.enrollment_id);
+    const comment = String(item.comment ?? "").trim();
+
+    if (!Number.isInteger(enrollment_id) || enrollment_id <= 0) {
+      throw new Error("Invalid enrollment ID in the uploaded remarks.");
+    }
+
+    if (remarkMap.has(enrollment_id)) {
+      throw new Error(
+        `Duplicate remark entry for enrollment ID ${enrollment_id}.`,
+      );
+    }
+
+    // Ignore blank remarks
+    if (!comment) continue;
+
+    if (comment.length > 255) {
+      throw new Error(
+        `Remark for enrollment ID ${enrollment_id} exceeds 255 characters.`,
+      );
+    }
+
+    remarkMap.set(enrollment_id, comment);
+  }
+
+  if (remarkMap.size === 0) {
+    throw new Error("No valid remarks were provided.");
+  }
+
+  const enrollmentIds = [...remarkMap.keys()];
+
+  // 4. Verify that all students belong to this section
+  const validEnrollments = await db
+    .selectFrom("enrollment as e")
+    .innerJoin("students as st", "st.stu_id", "e.stu_id")
+    .select("e.enrollment_id")
+    .where("e.section_id", "=", section_id)
+    .where("e.enr_status", "=", "enrolled")
+    .where("st.stu_status", "=", "active")
+    .where("e.enrollment_id", "in", enrollmentIds)
+    .execute();
+
+  if (validEnrollments.length !== enrollmentIds.length) {
+    throw new Error(
+      "One or more students are not currently enrolled in this section.",
+    );
+  }
+
+  // 5. Insert or update remarks
+  await db.transaction().execute(async (trx) => {
+    for (const [enrollment_id, comment] of remarkMap) {
+      await trx
+        .insertInto("quarterly_remarks")
+        .values({
+          enrollment_id,
+          quarter_id,
+          comment,
+          recorded_by: teacher_id,
+          date_recorded: sql`CURRENT_TIMESTAMP`,
+        })
+        .onDuplicateKeyUpdate({
+          comment,
+          recorded_by: teacher_id,
+          date_recorded: sql`CURRENT_TIMESTAMP`,
+        })
+        .executeTakeFirst();
+    }
+  });
+
+  return {
+    uploaded_count: remarkMap.size,
+    message: "Quarterly remarks uploaded successfully.",
+  };
+};
+
+export const getQuarterlyRemarksOfSection = async (
+  user_id,
+  section_id,
+  quarter_id,
+) => {
+  // 1. Verify teacher ownership of the section
+  const section = await db
+    .selectFrom("teacher_info as ti")
+    .innerJoin("teachers as t", "t.teacher_info_id", "ti.teacher_info_id")
+    .innerJoin("sections as s", "s.adviser_teacher_id", "t.teacher_id")
+    .select(["s.section_id", "s.section_name_id", "t.teacher_id"])
+    .where("ti.user_id", "=", user_id)
+    .where("s.section_id", "=", section_id)
+    .where("s.section_status", "=", "active")
+    .executeTakeFirst();
+
+  if (!section) {
+    throw new Error("You are not authorized to access this section.");
+  }
+
+  // 2. Verify quarter
+  const quarter = await db
+    .selectFrom("quarter")
+    .select(["quarter_id", "quarter_name"])
+    .where("quarter_id", "=", quarter_id)
+    .executeTakeFirst();
+
+  if (!quarter) {
+    throw new Error("Invalid grading quarter.");
+  }
+
+  // 3. Fetch enrolled students and their remarks
+  const students = await db
+    .selectFrom("enrollment as e")
+    .innerJoin("students as st", "st.stu_id", "e.stu_id")
+    .innerJoin("submissions as sub", "sub.submission_id", "st.submission_id")
+    .innerJoin(
+      "app_approval as aa",
+      "aa.app_approval_id",
+      "sub.app_approval_id",
+    )
+    .innerJoin("applications as a", "a.application_id", "aa.application_id")
+    .innerJoin(
+      "applicant_info as ai",
+      "ai.applicant_info_id",
+      "a.applicant_info_id",
+    )
+    .leftJoin("quarterly_remarks as qr", (join) =>
+      join
+        .onRef("qr.enrollment_id", "=", "e.enrollment_id")
+        .on("qr.quarter_id", "=", quarter_id),
+    )
+    .select([
+      "e.enrollment_id",
+      "st.stu_id",
+      "st.stu_num",
+      "st.lrn",
+      "ai.first_name",
+      "ai.middle_name",
+      "ai.last_name",
+      "qr.remark_id",
+      "qr.comment",
+      "qr.date_recorded",
+    ])
+    .where("e.section_id", "=", section_id)
+    .where("e.enr_status", "=", "enrolled")
+    .where("st.stu_status", "=", "active")
+    .orderBy("ai.last_name", "asc")
+    .orderBy("ai.first_name", "asc")
+    .execute();
+
+  return {
+    section,
+    quarter,
+    remarks: students.map((student) => ({
+      enrollment_id: student.enrollment_id,
+      stu_id: student.stu_id,
+      stu_num: student.stu_num,
+      lrn: student.lrn,
+      first_name: student.first_name,
+      middle_name: student.middle_name,
+      last_name: student.last_name,
+      student_name: `${student.last_name}, ${student.first_name}${
+        student.middle_name ? ` ${student.middle_name}` : ""
+      }`,
+      remark_id: student.remark_id,
+      comment: student.comment ?? null,
+      date_recorded: student.date_recorded,
+    })),
   };
 };

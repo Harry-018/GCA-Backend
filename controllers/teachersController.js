@@ -70,10 +70,6 @@ export const updateTeacher = async (req, res) => {
   }
 };
 
-//ACCOUNT SETTINGS
-
-// TEACHER PORTAL INFORMATION
-//get teacher info by account id(user_id)
 export const getTeacherInfoByUserId = async (req, res) => {
   try {
     const user_id = req.user.user_id;
@@ -370,6 +366,236 @@ export const getMonthlyAttendanceReport = async (req, res) => {
     return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message || "Failed to retrieve attendance report.",
+    });
+  }
+};
+
+export const getStudentGradesOfSection = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const { section_id, subject_id, quarter_id } = req.query;
+
+    // Validate required parameters
+    if (!section_id || !subject_id || !quarter_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Section, subject, and quarter are required.",
+      });
+    }
+
+    const result = await tm.getStudentGradesOfSection(
+      user_id,
+      Number(section_id),
+      Number(subject_id),
+      Number(quarter_id),
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Student grading information retrieved successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Get Student Grades Error:", error);
+
+    return res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message || "Failed to retrieve student grades.",
+    });
+  }
+};
+
+export const uploadGradesToStudents = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const { section_id, subject_id, quarter_id, grades } = req.body;
+
+    const sectionId = Number(section_id);
+    const subjectId = Number(subject_id);
+    const quarterId = Number(quarter_id);
+
+    if (
+      !Number.isInteger(sectionId) ||
+      sectionId <= 0 ||
+      !Number.isInteger(subjectId) ||
+      subjectId <= 0 ||
+      !Number.isInteger(quarterId) ||
+      quarterId <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid section, subject, and quarter IDs are required.",
+      });
+    }
+
+    if (!Array.isArray(grades) || grades.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "A non-empty grades array is required.",
+      });
+    }
+
+    const result = await tm.uploadGradesToStudents(
+      user_id,
+      sectionId,
+      subjectId,
+      quarterId,
+      grades,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Student grades uploaded successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Upload Student Grades Error:", error);
+
+    return res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message || "Failed to upload student grades.",
+    });
+  }
+};
+
+// GET /api/teachers/grading/quarters
+export const getTeacherGradingQuarters = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const quarters = await tm.getTeacherGradingQuarters(user_id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Grading quarters retrieved successfully.",
+      data: quarters,
+    });
+  } catch (error) {
+    console.error("Get Teacher Grading Quarters Error:", error);
+
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to retrieve grading quarters.",
+    });
+  }
+};
+
+// GET /api/teachers/grading/subjects?quarter_id=1
+export const getTeacherGradingSubjects = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+    const quarter_id = Number(req.query.quarter_id);
+
+    if (!Number.isInteger(quarter_id) || quarter_id <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid quarter_id is required.",
+      });
+    }
+
+    const subjects = await tm.getTeacherGradingSubjects(user_id, quarter_id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Grading subjects retrieved successfully.",
+      data: subjects,
+    });
+  } catch (error) {
+    console.error("Get Teacher Grading Subjects Error:", error);
+
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to retrieve grading subjects.",
+    });
+  }
+};
+
+export const uploadQuarterlyRemarks = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const { section_id, quarter_id, remarks } = req.body;
+
+    const sectionId = Number(section_id);
+    const quarterId = Number(quarter_id);
+
+    if (
+      !Number.isInteger(sectionId) ||
+      sectionId <= 0 ||
+      !Number.isInteger(quarterId) ||
+      quarterId <= 0 ||
+      !Array.isArray(remarks)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid section, quarter, or remarks data.",
+      });
+    }
+
+    const result = await tm.uploadQuarterlyRemarks(
+      user_id,
+      sectionId,
+      quarterId,
+      remarks,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        uploaded_count: result.uploaded_count,
+      },
+    });
+  } catch (error) {
+    console.error("Upload Quarterly Remarks Error:", error);
+
+    return res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message || "Failed to upload quarterly remarks.",
+    });
+  }
+};
+
+export const getTeacherRemarksStudents = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const { section_id, quarter_id } = req.query;
+
+    const sectionId = Number(section_id);
+    const quarterId = Number(quarter_id);
+
+    if (
+      !Number.isInteger(sectionId) ||
+      sectionId <= 0 ||
+      !Number.isInteger(quarterId) ||
+      quarterId <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Section and quarter are required.",
+      });
+    }
+
+    const result = await tm.getQuarterlyRemarksOfSection(
+      user_id,
+      sectionId,
+      quarterId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Teacher remarks students retrieved successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Get Teacher Remarks Students Error:", error);
+
+    return res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message || "Failed to retrieve teacher remarks.",
     });
   }
 };

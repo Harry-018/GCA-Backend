@@ -370,10 +370,26 @@ export const getSubjectsInGradeLevel = async (sy_grade_level_id) => {
 
 export const addSubjectsToGradeLevel = async (data) => {
   const sy_grade_level_id = Number(data.sy_grade_level_id);
+
   const subject_ids = [
     ...new Set(data.subject_ids.map((subject_id) => Number(subject_id))),
   ];
+
   return await db.transaction().execute(async (trx) => {
+    // 1. Retrieve the four master quarters
+    const quarters = await trx
+      .selectFrom("quarter")
+      .select("quarter_id")
+      .orderBy("quarter_id", "asc")
+      .execute();
+
+    if (quarters.length !== 3) {
+      throw new Error(
+        "The 3 grading quarters must be configured before assigning subjects.",
+      );
+    }
+
+    // 2. Validate selected subjects
     const subjects = await trx
       .selectFrom("subjects as s")
       .innerJoin("subject_versions as sv", "sv.subject_id", "s.subject_id")
@@ -387,9 +403,12 @@ export const addSubjectsToGradeLevel = async (data) => {
       .where("s.subject_status", "=", "active")
       .whereRef("sv.subject_name", "=", "s.subject_name")
       .execute();
+
     if (subjects.length !== subject_ids.length) {
       throw new Error("One or more subjects were not found.");
     }
+
+    // 3. Retrieve existing subject assignments
     const existingAssignments = await trx
       .selectFrom("schoolyears_gradelevels_subjects")
       .select([
@@ -401,13 +420,18 @@ export const addSubjectsToGradeLevel = async (data) => {
       .where("sy_grade_level_id", "=", sy_grade_level_id)
       .where("subject_id", "in", subject_ids)
       .execute();
+
     const existingMap = new Map(
       existingAssignments.map((item) => [Number(item.subject_id), item]),
     );
+
     const subjectsToInsert = [];
     const subjectsToReactivate = [];
+
+    // 4. Determine which subjects need insertion or restoration
     for (const subject of subjects) {
       const existing = existingMap.get(Number(subject.subject_id));
+
       if (!existing) {
         subjectsToInsert.push({
           sy_grade_level_id,
@@ -422,6 +446,8 @@ export const addSubjectsToGradeLevel = async (data) => {
         });
       }
     }
+
+    // 5. Reactivate archived subjects
     for (const subject of subjectsToReactivate) {
       await trx
         .updateTable("schoolyears_gradelevels_subjects")
@@ -436,12 +462,69 @@ export const addSubjectsToGradeLevel = async (data) => {
         )
         .executeTakeFirst();
     }
+
+    // 6. Insert new subject assignments
     if (subjectsToInsert.length > 0) {
       await trx
         .insertInto("schoolyears_gradelevels_subjects")
         .values(subjectsToInsert)
         .execute();
     }
+
+    // 7. Retrieve all active subject assignments
+    // This includes newly inserted, restored, and already active subjects.
+    const activeAssignments = await trx
+      .selectFrom("schoolyears_gradelevels_subjects")
+      .select("sy_gradelevel_subject_id")
+      .where("sy_grade_level_id", "=", sy_grade_level_id)
+      .where("subject_id", "in", subject_ids)
+      .where("sy_gradelevel_subject_status", "=", "active")
+      .execute();
+
+    // 8. Retrieve existing quarter assignments
+    const assignmentIds = activeAssignments.map((item) =>
+      Number(item.sy_gradelevel_subject_id),
+    );
+
+    const existingQuarterAssignments = await trx
+      .selectFrom("quarter_subjects")
+      .select(["quarter_id", "sy_gradelevel_subject_id"])
+      .where("sy_gradelevel_subject_id", "in", assignmentIds)
+      .execute();
+
+    const existingQuarterMap = new Set(
+      existingQuarterAssignments.map(
+        (item) =>
+          `${Number(item.sy_gradelevel_subject_id)}-${Number(item.quarter_id)}`,
+      ),
+    );
+
+    // 9. Generate missing quarter assignments
+    const quarterAssignments = [];
+
+    for (const assignment of activeAssignments) {
+      for (const quarter of quarters) {
+        const key = `${Number(assignment.sy_gradelevel_subject_id)}-${Number(quarter.quarter_id)}`;
+
+        if (!existingQuarterMap.has(key)) {
+          quarterAssignments.push({
+            sy_gradelevel_subject_id: Number(
+              assignment.sy_gradelevel_subject_id,
+            ),
+            quarter_id: Number(quarter.quarter_id),
+          });
+        }
+      }
+    }
+
+    // 10. Insert missing quarter assignments
+    if (quarterAssignments.length > 0) {
+      await trx
+        .insertInto("quarter_subjects")
+        .values(quarterAssignments)
+        .execute();
+    }
+
     return {
       inserted: subjectsToInsert.length,
       reactivated: subjectsToReactivate.length,
@@ -449,6 +532,7 @@ export const addSubjectsToGradeLevel = async (data) => {
         subject_ids.length -
         subjectsToInsert.length -
         subjectsToReactivate.length,
+      quarter_assignments_created: quarterAssignments.length,
       subject_ids: subjectsToInsert.map((subject) => subject.subject_id),
     };
   });

@@ -11,6 +11,12 @@ import {
   getAttendanceStudents,
   saveAttendance,
   getMonthlyAttendanceReport,
+  getStudentGradesOfSection,
+  uploadGradesToStudents,
+  getTeacherGradingQuarters,
+  getTeacherGradingSubjects,
+  uploadQuarterlyRemarks,
+  getTeacherRemarksStudents,
 } from "../controllers/teachersController.js";
 
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
@@ -57,5 +63,45 @@ router.post(
 router.get("/:teacher_id", authenticate, authorize("admin"), getTeacherInfo);
 
 router.patch("/:teacher_id", authenticate, authorize("admin"), updateTeacher);
+
+router.post(
+  "/grading/remarks/upload",
+  authenticate,
+  authorize("teacher"),
+  uploadQuarterlyRemarks,
+);
+router.get(
+  "/grading/remarks/students",
+  authenticate,
+  authorize("teacher"),
+  getTeacherRemarksStudents,
+);
+
+router.get(
+  "/grading/students",
+  authenticate,
+  authorize("teacher"),
+  getStudentGradesOfSection,
+);
+router.get(
+  "/grading/quarters",
+  authenticate,
+  authorize("teacher"),
+  getTeacherGradingQuarters,
+);
+
+router.get(
+  "/grading/subjects",
+  authenticate,
+  authorize("teacher"),
+  getTeacherGradingSubjects,
+);
+
+router.post(
+  "/grading/upload",
+  authenticate,
+  authorize("teacher"),
+  uploadGradesToStudents,
+);
 
 export default router;
