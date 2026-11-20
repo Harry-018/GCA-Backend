@@ -73,7 +73,17 @@ export const disableAccount = async (req, res) => {
 
     const result = await uam.disableAccount(Number(user_id), reason);
 
-    res.status(200).json({
+    // Send account disabled notification
+    try {
+      await sendAccountDisabledEmail({
+        user_id: Number(user_id),
+        reason,
+      });
+    } catch (emailError) {
+      console.error("Account disabled email error:", emailError);
+    }
+
+    return res.status(200).json({
       success: true,
       message: "Account disabled successfully.",
       data: result,
@@ -81,7 +91,7 @@ export const disableAccount = async (req, res) => {
   } catch (error) {
     console.error("disableAccount:", error);
 
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: error.message || "Failed to disable account.",
     });

@@ -171,36 +171,44 @@ export const createAccountInvitation = async (user_id) => {
   };
 };
 
-export const disableAccount = async (req, res) => {
-  try {
-    const { user_id } = req.params;
-    const { reason } = req.body;
+export const disableAccount = async (user_id, reason) => {
+  // 1. Check if the account exists
+  const user = await db
+    .selectFrom("user_accounts")
+    .select(["user_id", "role", "account_status"])
+    .where("user_id", "=", user_id)
+    .executeTakeFirst();
 
-    const result = await uam.disableAccount(Number(user_id), reason);
-
-    // Send account disabled notification
-    try {
-      await sendAccountDisabledEmail({
-        user_id: Number(user_id),
-        reason,
-      });
-    } catch (emailError) {
-      console.error("Account disabled email error:", emailError);
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Account disabled successfully.",
-      data: result,
-    });
-  } catch (error) {
-    console.error("disableAccount:", error);
-
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to disable account.",
-    });
+  if (!user) {
+    throw new Error("User account not found.");
   }
+
+  // 2. Prevent disabling admin accounts
+  if (user.role === "admin") {
+    throw new Error("Admin accounts cannot be disabled.");
+  }
+
+  // 3. Only active accounts can be disabled
+  if (user.account_status !== "active") {
+    throw new Error("Only active accounts can be disabled.");
+  }
+
+  // 4. Update account status
+  await db
+    .updateTable("user_accounts")
+    .set({
+      account_status: "disabled",
+      disable_reason: reason,
+    })
+    .where("user_id", "=", user_id)
+    .executeTakeFirst();
+
+  // 5. Return updated account information
+  return {
+    user_id: Number(user_id),
+    account_status: "disabled",
+    disable_reason: reason,
+  };
 };
 
 export const reactivateAccount = async (user_id) => {
