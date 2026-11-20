@@ -22,6 +22,7 @@ import tuir from "./routes/tuitionRoutes.js";
 import dash from "./routes/dashboardRoutes.js";
 import logs from "./routes/activityLogsRoute.js";
 import inq from "./routes/guestInquiryRoute.js";
+import fp from "./routes/forgotPasswordRoute.js";
 dotenv.config();
 
 console.log("Starting server...");
@@ -52,6 +53,7 @@ app.use("/api/tuition", tuir);
 app.use("/api/dashboard", dash);
 app.use("/api/activity-logs", logs);
 app.use("/api/inquire", inq);
+app.use("/api/forgot-password", fp);
 
 const PORT = process.env.PORT || 5000;
 
