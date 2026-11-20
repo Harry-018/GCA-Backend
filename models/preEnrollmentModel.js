@@ -25,9 +25,11 @@ const formatDateOnly = (date) => {
 export const applyApplication = async (data) => {
   return await db.transaction().execute(async (trx) => {
     const verification = await getVerification(data.verification_id);
+
     if (!verification) {
       throw new Error("Email verification not found.");
     }
+
     if (!verification.verified_at) {
       throw new Error("Email has not been verified.");
     }
@@ -37,12 +39,11 @@ export const applyApplication = async (data) => {
       .select("school_year_id")
       .where("sy_status", "=", "active")
       .executeTakeFirst();
+
     if (!activeSY) {
       throw new Error("There is currently no active school year.");
     }
 
-    // The form sends { verification_id, students: [...] }. Keep accepting a
-    // single flat payload as well for older clients/tests.
     const students =
       Array.isArray(data.students) && data.students.length > 0
         ? data.students
@@ -51,6 +52,7 @@ export const applyApplication = async (data) => {
     const applications = [];
 
     for (const student of students) {
+      // 1. Check duplicate applicant
       const checkDuplicate = await trx
         .selectFrom("applicant_info")
         .select(["applicant_info_id"])
@@ -59,10 +61,12 @@ export const applyApplication = async (data) => {
         .where("middle_name", "=", student.s_mid_name)
         .where("bdate", "=", student.s_bdate)
         .executeTakeFirst();
+
       if (checkDuplicate) {
         throw new Error("Applicant already exists.");
       }
 
+      // 2. Create applicant address
       const address = await trx
         .insertInto("applicant_address")
         .values({
@@ -73,8 +77,10 @@ export const applyApplication = async (data) => {
           zipcode: student.zipcode,
         })
         .executeTakeFirst();
+
       const address_id = Number(address.insertId);
 
+      // 3. Create applicant information
       const info = await trx
         .insertInto("applicant_info")
         .values({
@@ -91,9 +97,12 @@ export const applyApplication = async (data) => {
           address_id,
         })
         .executeTakeFirst();
+
       const info_id = Number(info.insertId);
 
+      // 4. Create application
       const appNo = await ng.applicationNo(trx);
+
       const application = await trx
         .insertInto("applications")
         .values({
@@ -107,29 +116,70 @@ export const applyApplication = async (data) => {
           rejection_reason_id: student.rejection_reason_id,
         })
         .executeTakeFirst();
+
       const application_id = Number(application.insertId);
 
+      // 5. Process parent information
       const parents = Array.isArray(student.parents)
-        ? student.parents.filter((parent, index) => {
-            if (index < 2) return true;
-
-            return parent.p_first_name || parent.p_last_name;
+        ? student.parents.filter((parent) => {
+            return (
+              parent.p_first_name?.trim() ||
+              parent.p_last_name?.trim() ||
+              parent.p_email?.trim()
+            );
           })
         : [];
 
+      const processedParentEmails = new Set();
+
       for (const parent of parents) {
-        const parentInfo = await trx
-          .insertInto("parent_info")
-          .values({
-            first_name: parent.p_first_name,
-            last_name: parent.p_last_name,
-            middle_name: parent.p_middle_name,
-            contact_number: parent.p_contact_number,
-            occupation: parent.p_occupation,
-            email: parent.p_email,
-          })
-          .executeTakeFirst();
-        const parent_id = Number(parentInfo.insertId);
+        const parentEmail = parent.p_email?.trim().toLowerCase() || null;
+
+        let parent_id;
+
+        // Prevent duplicate parent links within the same application.
+        if (parentEmail && processedParentEmails.has(parentEmail)) {
+          throw new Error(
+            `The same parent email (${parentEmail}) was entered more than once for this student.`,
+          );
+        }
+
+        if (parentEmail) {
+          processedParentEmails.add(parentEmail);
+        }
+
+        // 6. Look for an existing parent profile using email
+        let existingParent = null;
+
+        if (parentEmail) {
+          existingParent = await trx
+            .selectFrom("parent_info")
+            .select(["parent_info_id", "user_id"])
+            .where(sql`LOWER(TRIM(email))`, "=", parentEmail)
+            .executeTakeFirst();
+        }
+
+        if (existingParent) {
+          // Reuse the existing parent profile.
+          parent_id = existingParent.parent_info_id;
+        } else {
+          // 7. Create a new parent profile only if none exists.
+          const parentInfo = await trx
+            .insertInto("parent_info")
+            .values({
+              first_name: parent.p_first_name?.trim() || "",
+              last_name: parent.p_last_name?.trim() || "",
+              middle_name: parent.p_middle_name?.trim() || null,
+              contact_number: parent.p_contact_number,
+              occupation: parent.p_occupation || null,
+              email: parentEmail,
+            })
+            .executeTakeFirst();
+
+          parent_id = Number(parentInfo.insertId);
+        }
+
+        // 8. Link parent profile to this application.
         await trx
           .insertInto("applicant_parent")
           .values({
@@ -141,12 +191,14 @@ export const applyApplication = async (data) => {
           .executeTakeFirst();
       }
 
-      applications.push({ application_id, application_no: appNo });
+      applications.push({
+        application_id,
+        application_no: appNo,
+      });
     }
 
     return {
       applications,
-      // Keep the original fields for single-student callers.
       application_id: applications[0]?.application_id ?? null,
       application_no: applications[0]?.application_no ?? null,
     };
@@ -768,30 +820,77 @@ export const enrollApplicant = async (data) => {
       throw new Error("Parent account recipient has no email.");
     }
 
-    // 9. Create parent user account
+    const parentEmail = accountParent.email.trim().toLowerCase();
+
+    // 9. Resolve the parent user account
     let user_id = accountParent.user_id;
 
-    if (!user_id) {
-      const userAccount = await trx
-        .insertInto("user_accounts")
-        .values({
-          email: accountParent.email,
-          password: null,
-          first_name: accountParent.first_name,
-          last_name: accountParent.last_name,
-          role: "parent",
-          account_status: "pending",
-          created_at: new Date(),
-        })
+    if (user_id) {
+      // Parent profile is already linked to an account.
+      const linkedAccount = await trx
+        .selectFrom("user_accounts")
+        .select(["user_id", "email", "role", "account_status"])
+        .where("user_id", "=", user_id)
         .executeTakeFirst();
 
-      user_id = Number(userAccount.insertId);
+      if (!linkedAccount || linkedAccount.role !== "parent") {
+        throw new Error("Invalid parent account relationship.");
+      }
+    } else {
+      // Check whether an account already exists for this email.
+      const existingAccount = await trx
+        .selectFrom("user_accounts")
+        .select(["user_id", "email", "role", "account_status"])
+        .where(sql`LOWER(TRIM(email))`, "=", parentEmail)
+        .executeTakeFirst();
 
+      if (existingAccount) {
+        if (existingAccount.role !== "parent") {
+          throw new Error(
+            "This email is already registered to another account type.",
+          );
+        }
+
+        // Check whether this account is already linked
+        // to another parent_info record.
+        const linkedParent = await trx
+          .selectFrom("parent_info")
+          .select("parent_info_id")
+          .where("user_id", "=", existingAccount.user_id)
+          .executeTakeFirst();
+
+        if (
+          linkedParent &&
+          linkedParent.parent_info_id !== accountParent.parent_info_id
+        ) {
+          throw new Error(
+            "This parent already has another linked parent profile. Reuse the existing parent profile when creating the application.",
+          );
+        }
+
+        user_id = existingAccount.user_id;
+      } else {
+        // No account exists. Create a new pending parent account.
+        const userAccount = await trx
+          .insertInto("user_accounts")
+          .values({
+            email: parentEmail,
+            password: null,
+            first_name: accountParent.first_name,
+            last_name: accountParent.last_name,
+            role: "parent",
+            account_status: "pending",
+            created_at: new Date(),
+          })
+          .executeTakeFirst();
+
+        user_id = Number(userAccount.insertId);
+      }
+
+      // Link the parent profile to the resolved account.
       await trx
         .updateTable("parent_info")
-        .set({
-          user_id,
-        })
+        .set({ user_id })
         .where("parent_info_id", "=", accountParent.parent_info_id)
         .execute();
     }
