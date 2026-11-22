@@ -166,6 +166,7 @@ export const editAnnouncementInGradeLevel = async (req, res) => {
         venue,
         body,
       },
+      req.user.user_id,
     );
 
     res.status(200).json(result);
@@ -184,6 +185,7 @@ export const deleteAnnouncementInGradeLevel = async (req, res) => {
 
     const result = await comm.deleteAnnouncementInGradeLevel(
       Number(announcement_id),
+      req.user.user_id,
     );
 
     res.status(200).json(result);
@@ -498,7 +500,11 @@ export const updateTuitionReminder = async (req, res) => {
   try {
     const { reminder_id } = req.params;
 
-    const result = await comm.updateTuitionReminder(reminder_id, req.body);
+    const result = await comm.updateTuitionReminder(
+      reminder_id,
+      req.body,
+      req.user.user_id,
+    );
 
     return res.status(200).json({
       success: true,
@@ -519,7 +525,10 @@ export const deleteTuitionReminder = async (req, res) => {
   try {
     const { reminder_id } = req.params;
 
-    const result = await comm.deleteTuitionReminder(reminder_id);
+    const result = await comm.deleteTuitionReminder(
+      reminder_id,
+      req.user.user_id,
+    );
 
     return res.status(200).json({
       success: true,

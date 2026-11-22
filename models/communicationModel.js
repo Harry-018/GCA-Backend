@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import { sql } from "kysely";
+import { logAdminActivity } from "./activityLogsModel.js";
 
 // =====================
 // GRADE LEVELS
@@ -107,6 +108,13 @@ export const createAnnouncementInGradeLevel = async (
     })
     .executeTakeFirst();
 
+  await logAdminActivity({
+    user_id,
+    user_action: "Created",
+    user_module: "Announcements",
+    description: `Created announcement "${data.title.trim()}".`,
+  });
+
   return {
     announcement_id: Number(result.insertId),
     title: data.title.trim(),
@@ -124,7 +132,11 @@ export const createAnnouncementInGradeLevel = async (
 // EDIT ANNOUNCEMENT
 // =====================
 
-export const editAnnouncementInGradeLevel = async (announcement_id, data) => {
+export const editAnnouncementInGradeLevel = async (
+  announcement_id,
+  data,
+  user_id,
+) => {
   const existing = await db
     .selectFrom("announcements")
     .select("announcement_id")
@@ -148,6 +160,13 @@ export const editAnnouncementInGradeLevel = async (announcement_id, data) => {
     .where("announcement_id", "=", announcement_id)
     .executeTakeFirst();
 
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Announcements",
+    description: `Updated announcement "${data.title.trim()}".`,
+  });
+
   return {
     announcement_id: Number(announcement_id),
     title: data.title.trim(),
@@ -163,10 +182,13 @@ export const editAnnouncementInGradeLevel = async (announcement_id, data) => {
 // DELETE ANNOUNCEMENT
 // =====================
 
-export const deleteAnnouncementInGradeLevel = async (announcement_id) => {
+export const deleteAnnouncementInGradeLevel = async (
+  announcement_id,
+  user_id,
+) => {
   const existing = await db
     .selectFrom("announcements")
-    .select("announcement_id")
+    .select(["announcement_id", "title"])
     .where("announcement_id", "=", announcement_id)
     .executeTakeFirst();
 
@@ -178,6 +200,13 @@ export const deleteAnnouncementInGradeLevel = async (announcement_id) => {
     .deleteFrom("announcements")
     .where("announcement_id", "=", announcement_id)
     .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Deleted",
+    user_module: "Announcements",
+    description: `Deleted announcement "${existing.title}".`,
+  });
 
   return {
     announcement_id: Number(announcement_id),
@@ -227,7 +256,7 @@ export const createNotification = async ({
   sent_at,
   payment_option_id,
 }) => {
-  return await db
+  const result = await db
     .insertInto("notifications")
     .values({
       template_id,
@@ -237,6 +266,15 @@ export const createNotification = async ({
       payment_option_id,
     })
     .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id: created_by,
+    user_action: "Created",
+    user_module: "Notifications",
+    description: `Created notification for ${audience} audience.`,
+  });
+
+  return result;
 };
 
 export const getNotificationTemplateById = async (template_id) => {
@@ -501,7 +539,7 @@ export const createTuitionReminder = async (data, created_by) => {
 
   const paymentOption = await db
     .selectFrom("payment_option")
-    .select("payment_option_id")
+    .select(["payment_option_id", "option_name"])
     .where("payment_option_id", "=", values.payment_option_id)
     .executeTakeFirst();
 
@@ -532,11 +570,18 @@ export const createTuitionReminder = async (data, created_by) => {
     })
     .executeTakeFirst();
 
+  await logAdminActivity({
+    user_id: created_by,
+    user_action: "Created",
+    user_module: "Tuition Reminders",
+    description: `Created tuition reminder for ${paymentOption.option_name}.`,
+  });
+
   return await getTuitionReminderById(Number(result.insertId));
 };
 
 // UPDATE REMINDER
-export const updateTuitionReminder = async (reminder_id, data) => {
+export const updateTuitionReminder = async (reminder_id, data, user_id) => {
   const id = Number(reminder_id);
   const values = validateTuitionReminder(data);
 
@@ -566,21 +611,52 @@ export const updateTuitionReminder = async (reminder_id, data) => {
     throw new Error("This tuition reminder already exists.");
   }
 
+  const paymentOption = await db
+    .selectFrom("payment_option")
+    .select("option_name")
+    .where("payment_option_id", "=", values.payment_option_id)
+    .executeTakeFirst();
+
   await db
     .updateTable("tuition_reminders")
     .set(values)
     .where("reminder_id", "=", id)
     .executeTakeFirst();
 
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Tuition Reminders",
+    description: `Updated tuition reminder for ${paymentOption?.option_name ?? "payment option"}.`,
+  });
+
   return await getTuitionReminderById(id);
 };
 
 // DELETE REMINDER (SOFT DELETE)
-export const deleteTuitionReminder = async (reminder_id) => {
+export const deleteTuitionReminder = async (reminder_id, user_id) => {
+  const reminder = await db
+    .selectFrom("tuition_reminders as tr")
+    .innerJoin(
+      "payment_option as po",
+      "tr.payment_option_id",
+      "po.payment_option_id",
+    )
+    .select("po.option_name")
+    .where("tr.reminder_id", "=", Number(reminder_id))
+    .executeTakeFirst();
+
   const result = await db
     .deleteFrom("tuition_reminders")
     .where("reminder_id", "=", Number(reminder_id))
     .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Deleted",
+    user_module: "Tuition Reminders",
+    description: `Deleted tuition reminder for ${reminder?.option_name ?? "payment option"}.`,
+  });
 
   return Number(result.numDeletedRows) > 0;
 };

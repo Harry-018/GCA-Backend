@@ -49,7 +49,11 @@ export const updateTeacher = async (req, res) => {
   try {
     const { teacher_id } = req.params;
 
-    const teacher = await tm.updateTeacher(Number(teacher_id), req.body);
+    const teacher = await tm.updateTeacher(
+      Number(teacher_id),
+      req.body,
+      req.user.user_id,
+    );
 
     if (!teacher) {
       return res.status(404).json({

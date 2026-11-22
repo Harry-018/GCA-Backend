@@ -32,13 +32,20 @@ export const getSchoolYearInfo = async (req, res) => {
 
 export const createSchoolYear = async (req, res) => {
   try {
-    const schoolYear = await am.createSchoolYear(req.body);
+    const schoolYear = await am.createSchoolYear(req.body, req.user.user_id);
 
-    res
-      .status(201)
-      .json({ message: "Successfully Created School Year", data: schoolYear });
+    return res.status(201).json({
+      success: true,
+      message: "Successfully Created School Year",
+      data: schoolYear,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Create School Year Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -47,13 +54,21 @@ export const editSchoolYear = async (req, res) => {
     const schoolYear = await am.editSchoolYear(
       req.params.school_year_id,
       req.body,
+      req.user.user_id,
     );
 
-    res
-      .status(201)
-      .json({ message: "Successfully Edited School Year", data: schoolYear });
+    return res.status(200).json({
+      success: true,
+      message: "Successfully Edited School Year",
+      data: schoolYear,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Edit School Year Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -80,7 +95,7 @@ export const getGradeLevelInfo = async (req, res) => {
 
 export const createGradeLevel = async (req, res) => {
   try {
-    const gradeLevel = await am.createGradeLevel(req.body);
+    const gradeLevel = await am.createGradeLevel(req.body, req.user.user_id);
 
     res.status(201).json({
       message: "Successfully Created Grade Level",
@@ -96,6 +111,7 @@ export const editGradeLevel = async (req, res) => {
     const gradelevel = await am.editGradeLevel(
       req.params.grade_level_id,
       req.body,
+      req.user.user_id,
     );
 
     res.status(200).json({
@@ -153,7 +169,10 @@ export const getAvailableGradelevels = async (req, res) => {
 
 export const addGradelevelsToSchoolYears = async (req, res) => {
   try {
-    const gl_sy = await am.addGradelevelsToSchoolYears(req.body);
+    const gl_sy = await am.addGradelevelsToSchoolYears(
+      req.body,
+      req.user.user_id,
+    );
 
     res.status(201).json({
       message: "Successfully added grade level to school year",
@@ -166,7 +185,10 @@ export const addGradelevelsToSchoolYears = async (req, res) => {
 
 export const removeGradeLevelFromSchoolYear = async (req, res) => {
   try {
-    const gradelevel = await am.removeGradeLevelFromSchoolYear(req.body);
+    const gradelevel = await am.removeGradeLevelFromSchoolYear(
+      req.body,
+      req.user.user_id,
+    );
 
     res.status(200).json({
       message: "Successfully removed grade level from school year",
@@ -227,15 +249,17 @@ export const getSubjectsInGradeLevel = async (req, res) => {
 
 export const addSubjectsToGradeLevel = async (req, res) => {
   try {
-    const { sy_grade_level_id } = req.body;
-    const { subject_ids } = req.body;
+    const { sy_grade_level_id, subject_ids } = req.body;
 
-    const result = await am.addSubjectsToGradeLevel({
-      sy_grade_level_id: Number(sy_grade_level_id),
-      subject_ids,
-    });
+    const result = await am.addSubjectsToGradeLevel(
+      {
+        sy_grade_level_id: Number(sy_grade_level_id),
+        subject_ids,
+      },
+      req.user.user_id,
+    );
 
-    res.status(201).json({
+    return res.status(200).json({
       success: true,
       message: "Subjects assigned successfully.",
       data: result,
@@ -243,9 +267,9 @@ export const addSubjectsToGradeLevel = async (req, res) => {
   } catch (error) {
     console.error("Error assigning subjects:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Failed to assign subjects.",
+      message: error.message,
     });
   }
 };
@@ -254,6 +278,7 @@ export const removeSubjectFromGradeLevel = async (req, res) => {
   try {
     const subject = await am.removeSubjectFromGradeLevel(
       req.params.sy_gradelevel_subject_id,
+      req.user.user_id,
     );
 
     res.status(200).json({
@@ -337,7 +362,11 @@ export const addSkillToSubject = async (req, res) => {
   try {
     const { subject_id } = req.params;
 
-    const skill = await am.addSkillToSubject(Number(subject_id), req.body);
+    const skill = await am.addSkillToSubject(
+      Number(subject_id),
+      req.body,
+      req.user.user_id,
+    );
 
     res.status(201).json({
       success: true,
@@ -362,6 +391,7 @@ export const assignSkillsToGradeLevelSubject = async (req, res) => {
     const result = await am.assignSkillsToGradeLevelSubject(
       Number(sy_gradelevel_subject_id),
       skill_ids,
+      req.user.user_id,
     );
     res.status(201).json({
       success: true,
@@ -386,6 +416,7 @@ export const editSkill = async (req, res) => {
       Number(subject_id),
       Number(skill_id),
       req.body,
+      req.user.user_id,
     );
 
     res.status(200).json({
@@ -411,6 +442,7 @@ export const archiveSkill = async (req, res) => {
     const result = await am.archiveSkill(
       Number(sy_gradelevel_subject_id),
       Number(skill_id),
+      req.user.user_id,
     );
 
     res.status(200).json({
@@ -436,6 +468,7 @@ export const restoreSkill = async (req, res) => {
     const result = await am.restoreSkill(
       Number(sy_gradelevel_subject_id),
       Number(skill_id),
+      req.user.user_id,
     );
 
     res.status(200).json({

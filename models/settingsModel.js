@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import { logAdminActivity } from "./activityLogsModel.js";
 
 // =====================
 // SCHOOL INFORMATION
@@ -26,6 +27,7 @@ export const updateSchoolInformation = async (data) => {
     contact_number,
     school_email,
     school_address,
+    user_id,
   } = data;
 
   if (typeof school_name !== "string" || !school_name.trim()) {
@@ -80,6 +82,13 @@ export const updateSchoolInformation = async (data) => {
     throw new Error("Failed to update school information.");
   }
 
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Settings",
+    description: `Updated school information for "${school_name.trim()}".`,
+  });
+
   return {
     school_info_id: Number(existing.school_info_id),
     school_name: school_name.trim(),
@@ -123,7 +132,7 @@ export const getArchivedSectionNames = async () => {
     .execute();
 };
 
-export const createSectionName = async (section_name) => {
+export const createSectionName = async (section_name, user_id) => {
   const name = section_name.trim();
 
   if (!name) {
@@ -144,6 +153,16 @@ export const createSectionName = async (section_name) => {
           .set({ section_name_status: "active" })
           .where("section_name_id", "=", existing.section_name_id)
           .executeTakeFirst();
+
+        await logAdminActivity(
+          {
+            user_id,
+            user_action: "Updated",
+            user_module: "Sections",
+            description: `Reactivated section name "${existing.section_name}".`,
+          },
+          trx,
+        );
 
         return {
           section_name_id: Number(existing.section_name_id),
@@ -174,6 +193,16 @@ export const createSectionName = async (section_name) => {
       })
       .executeTakeFirst();
 
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Created",
+        user_module: "Sections",
+        description: `Created section name "${name}".`,
+      },
+      trx,
+    );
+
     return {
       section_name_id: sectionNameId,
       section_name_version_id: Number(versionResult.insertId),
@@ -183,7 +212,11 @@ export const createSectionName = async (section_name) => {
   });
 };
 
-export const renameSectionName = async (section_name_id, section_name) => {
+export const renameSectionName = async (
+  section_name_id,
+  section_name,
+  user_id,
+) => {
   const newName = section_name.trim();
 
   if (!newName) {
@@ -243,6 +276,16 @@ export const renameSectionName = async (section_name_id, section_name) => {
       .where("section_name_id", "=", section_name_id)
       .executeTakeFirst();
 
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Updated",
+        user_module: "Sections",
+        description: `Renamed section name "${existing.section_name}" to "${newName}".`,
+      },
+      trx,
+    );
+
     return {
       section_name_id: Number(section_name_id),
       section_name_version_id: Number(sectionNameVersionId),
@@ -251,7 +294,7 @@ export const renameSectionName = async (section_name_id, section_name) => {
   });
 };
 
-export const archiveSectionName = async (section_name_id) => {
+export const archiveSectionName = async (section_name_id, user_id) => {
   const existing = await db
     .selectFrom("section_names")
     .select(["section_name_id", "section_name", "section_name_status"])
@@ -274,13 +317,20 @@ export const archiveSectionName = async (section_name_id) => {
     .where("section_name_id", "=", section_name_id)
     .executeTakeFirst();
 
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Sections",
+    description: `Archived section name "${existing.section_name}".`,
+  });
+
   return {
     section_name_id: Number(section_name_id),
     section_name_status: "archived",
   };
 };
 
-export const restoreSectionName = async (section_name_id) => {
+export const restoreSectionName = async (section_name_id, user_id) => {
   const existing = await db
     .selectFrom("section_names")
     .select(["section_name_id", "section_name", "section_name_status"])
@@ -302,6 +352,13 @@ export const restoreSectionName = async (section_name_id) => {
     })
     .where("section_name_id", "=", section_name_id)
     .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Sections",
+    description: `Restored section name "${existing.section_name}".`,
+  });
 
   return {
     section_name_id: Number(section_name_id),
@@ -352,7 +409,11 @@ export const getSubjectsByGradeLevel = async (gradeLevelId) => {
     .execute();
 };
 
-export const addSubjectToGradeLevel = async ({ gradeLevelId, subjectId }) => {
+export const addSubjectToGradeLevel = async ({
+  gradeLevelId,
+  subjectId,
+  user_id,
+}) => {
   return await db.transaction().execute(async (trx) => {
     // 1. Get the active school year
     const activeSchoolYear = await trx
@@ -403,6 +464,12 @@ export const addSubjectToGradeLevel = async ({ gradeLevelId, subjectId }) => {
       throw new Error("Current subject version not found.");
     }
 
+    const gradeLevel = await trx
+      .selectFrom("grade_levels")
+      .select("grade_level_name")
+      .where("grade_level_id", "=", gradeLevelId)
+      .executeTakeFirst();
+
     // 5. Check if this subject is already assigned
     const existingAssignment = await trx
       .selectFrom("schoolyears_gradelevels_subjects")
@@ -435,6 +502,16 @@ export const addSubjectToGradeLevel = async ({ gradeLevelId, subjectId }) => {
         )
         .executeTakeFirst();
 
+      await logAdminActivity(
+        {
+          user_id,
+          user_action: "Updated",
+          user_module: "Grade Levels",
+          description: `Reactivated assignment of subject "${subjectVersion.subject_name}" to grade level ${gradeLevel?.grade_level_name}.`,
+        },
+        trx,
+      );
+
       return {
         sy_gradelevel_subject_id: existingAssignment.sy_gradelevel_subject_id,
         sy_grade_level_id: schoolYearGradeLevel.sy_grade_level_id,
@@ -455,6 +532,16 @@ export const addSubjectToGradeLevel = async ({ gradeLevelId, subjectId }) => {
       })
       .executeTakeFirst();
 
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Created",
+        user_module: "Grade Levels",
+        description: `Assigned subject "${subjectVersion.subject_name}" to grade level ${gradeLevel?.grade_level_name}.`,
+      },
+      trx,
+    );
+
     return {
       sy_gradelevel_subject_id: Number(result.insertId),
       sy_grade_level_id: schoolYearGradeLevel.sy_grade_level_id,
@@ -465,7 +552,10 @@ export const addSubjectToGradeLevel = async ({ gradeLevelId, subjectId }) => {
   });
 };
 
-export const removeSubjectFromGradeLevel = async (syGradelevelSubjectId) => {
+export const removeSubjectFromGradeLevel = async (
+  syGradelevelSubjectId,
+  user_id,
+) => {
   const result = await db
     .updateTable("schoolyears_gradelevels_subjects")
     .set({
@@ -479,12 +569,32 @@ export const removeSubjectFromGradeLevel = async (syGradelevelSubjectId) => {
     throw new Error("Subject assignment not found or already archived.");
   }
 
+  const assignment = await db
+    .selectFrom("schoolyears_gradelevels_subjects as sgls")
+    .innerJoin("subjects as s", "s.subject_id", "sgls.subject_id")
+    .innerJoin(
+      "schoolyears_gradelevels as sygl",
+      "sygl.sy_grade_level_id",
+      "sgls.sy_grade_level_id",
+    )
+    .innerJoin("grade_levels as gl", "gl.grade_level_id", "sygl.grade_level_id")
+    .select(["s.subject_name", "gl.grade_level_name"])
+    .where("sgls.sy_gradelevel_subject_id", "=", syGradelevelSubjectId)
+    .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Grade Levels",
+    description: `Removed ${assignment?.subject_name} from grade level ${assignment?.grade_level_name}.`,
+  });
+
   return {
     sy_gradelevel_subject_id: syGradelevelSubjectId,
   };
 };
 
-export const createSubject = async (subjectName) => {
+export const createSubject = async (subjectName, user_id) => {
   const name = subjectName.trim();
 
   if (!name) {
@@ -524,6 +634,16 @@ export const createSubject = async (subjectName) => {
 
     const subjectVersionId = Number(versionResult.insertId);
 
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Created",
+        user_module: "Settings",
+        description: `Created subject "${name}".`,
+      },
+      trx,
+    );
+
     return {
       subject_id: subjectId,
       subject_version_id: subjectVersionId,
@@ -532,7 +652,7 @@ export const createSubject = async (subjectName) => {
   });
 };
 
-export const removeSubject = async (subjectId) => {
+export const removeSubject = async (subjectId, user_id) => {
   const result = await db
     .updateTable("subjects")
     .set({
@@ -546,12 +666,25 @@ export const removeSubject = async (subjectId) => {
     throw new Error("Subject not found or already archived.");
   }
 
+  const subject = await db
+    .selectFrom("subjects")
+    .select("subject_name")
+    .where("subject_id", "=", subjectId)
+    .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Settings",
+    description: `Archived subject "${subject?.subject_name}".`,
+  });
+
   return {
     subject_id: subjectId,
   };
 };
 
-export const renameSubject = async (subjectId, subjectName) => {
+export const renameSubject = async (subjectId, subjectName, user_id) => {
   const newName = subjectName.trim();
 
   if (!newName) {
@@ -612,6 +745,16 @@ export const renameSubject = async (subjectId, subjectName) => {
       .where("subject_id", "=", subjectId)
       .executeTakeFirst();
 
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Updated",
+        user_module: "Settings",
+        description: `Renamed subject "${subject.subject_name}" to "${newName}".`,
+      },
+      trx,
+    );
+
     return {
       subject_id: subjectId,
       subject_name: newName,
@@ -620,7 +763,7 @@ export const renameSubject = async (subjectId, subjectName) => {
 };
 
 export const createSkill = async (data) => {
-  const { subject_id, skill_name, description } = data;
+  const { subject_id, skill_name, description, user_id } = data;
 
   if (!subject_id) {
     throw new Error("Subject ID is required.");
@@ -665,6 +808,13 @@ export const createSkill = async (data) => {
       .where("skill_id", "=", existingSkill.skill_id)
       .executeTakeFirst();
 
+    await logAdminActivity({
+      user_id,
+      user_action: "Updated",
+      user_module: "Settings",
+      description: `Reactivated skill "${existingSkill.skill_name}".`,
+    });
+
     return {
       skill_id: existingSkill.skill_id,
       subject_id,
@@ -683,6 +833,13 @@ export const createSkill = async (data) => {
       skill_status: "active",
     })
     .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Created",
+    user_module: "Settings",
+    description: `Created skill "${name}".`,
+  });
 
   return {
     skill_id: Number(result.insertId),
@@ -718,7 +875,7 @@ export const getArchivedSkillsBySubject = async (subjectId) => {
     .execute();
 };
 
-export const updateSkill = async (skillId, data) => {
+export const updateSkill = async (skillId, data, user_id) => {
   const { skill_name, description } = data;
 
   if (!skill_name?.trim()) {
@@ -728,7 +885,7 @@ export const updateSkill = async (skillId, data) => {
   // 1. Find the existing skill
   const skill = await db
     .selectFrom("skill")
-    .select(["skill_id", "subject_id"])
+    .select(["skill_id", "skill_name", "subject_id"])
     .where("skill_id", "=", skillId)
     .where("skill_status", "=", "active")
     .executeTakeFirst();
@@ -760,6 +917,13 @@ export const updateSkill = async (skillId, data) => {
     .where("skill_id", "=", skillId)
     .executeTakeFirst();
 
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Settings",
+    description: `Updated skill "${skill.skill_name}" to "${skill_name.trim()}".`,
+  });
+
   return {
     skill_id: skillId,
     subject_id: skill.subject_id,
@@ -768,7 +932,7 @@ export const updateSkill = async (skillId, data) => {
   };
 };
 
-export const removeSkill = async (skillId) => {
+export const removeSkill = async (skillId, user_id) => {
   const result = await db
     .updateTable("skill")
     .set({
@@ -782,12 +946,25 @@ export const removeSkill = async (skillId) => {
     throw new Error("Skill not found or already archived.");
   }
 
+  const skill = await db
+    .selectFrom("skill")
+    .select("skill_name")
+    .where("skill_id", "=", skillId)
+    .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Settings",
+    description: `Archived skill "${skill?.skill_name}".`,
+  });
+
   return {
     skill_id: skillId,
   };
 };
 
-export const reactivateSkill = async (skillId) => {
+export const reactivateSkill = async (skillId, user_id) => {
   const result = await db
     .updateTable("skill")
     .set({
@@ -800,6 +977,19 @@ export const reactivateSkill = async (skillId) => {
   if (Number(result.numUpdatedRows) === 0) {
     throw new Error("Skill not found or already active.");
   }
+
+  const skill = await db
+    .selectFrom("skill")
+    .select("skill_name")
+    .where("skill_id", "=", skillId)
+    .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Settings",
+    description: `Reactivated skill "${skill?.skill_name}".`,
+  });
 
   return {
     skill_id: skillId,

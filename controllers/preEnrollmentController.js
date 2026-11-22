@@ -167,9 +167,10 @@ export const rejectApplicant = async (req, res) => {
       },
       req.user.user_id,
     );
-    res
-      .status(200)
-      .json({ message: "Applicant rejected successfully", data: rejected });
+    res.status(200).json({
+      message: "Applicant rejected successfully.",
+      data: result,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -236,20 +237,20 @@ export const rejectApprovedApplicant = async (req, res) => {
 
 export const rescheduleApprovedApplicant = async (req, res) => {
   try {
-    const result = await pe.rescheduleApprovedApplicant({
-      app_approval_id: req.params.app_approval_id,
-      sub_date: req.body.sub_date,
-      from_time: req.body.from_time,
-      to_time: req.body.to_time,
-    });
-
-    res.status(200).json(
+    const result = await pe.rescheduleApprovedApplicant(
       {
-        message: "Applicant rescheduled successfully.",
-        data: result,
+        app_approval_id: req.params.app_approval_id,
+        sub_date: req.body.sub_date,
+        from_time: req.body.from_time,
+        to_time: req.body.to_time,
       },
       req.user.user_id,
     );
+
+    res.status(200).json({
+      message: "Applicant rescheduled successfully.",
+      data: result,
+    });
   } catch (error) {
     console.error("Reschedule approved applicant error:", error);
 

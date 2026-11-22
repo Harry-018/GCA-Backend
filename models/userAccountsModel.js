@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import db from "../config/db.js";
 import { sendAccountDisabledEmail } from "../emails/emailService.js";
+import { logAdminActivity } from "./activityLogsModel.js";
 
 export const getUserAccounts = async ({
   status = "all",
@@ -103,7 +104,7 @@ const getUserAccountCount = async ({
   return Number(result?.count ?? 0);
 };
 
-export const createAccountInvitation = async (user_id) => {
+export const createAccountInvitation = async (user_id, admin_user_id) => {
   const user = await db
     .selectFrom("user_accounts")
     .select([
@@ -162,6 +163,16 @@ export const createAccountInvitation = async (user_id) => {
       })
       .where("user_id", "=", user_id)
       .execute();
+
+    await logAdminActivity(
+      {
+        user_id: admin_user_id,
+        user_action: "Created",
+        user_module: "User Accounts",
+        description: `Created account invitation for ${user.email}.`,
+      },
+      trx,
+    );
   });
 
   return {
@@ -171,11 +182,11 @@ export const createAccountInvitation = async (user_id) => {
   };
 };
 
-export const disableAccount = async (user_id, reason) => {
+export const disableAccount = async (user_id, reason, admin_user_id) => {
   // 1. Check if the account exists
   const user = await db
     .selectFrom("user_accounts")
-    .select(["user_id", "role", "account_status"])
+    .select(["user_id", "email", "role", "account_status"])
     .where("user_id", "=", user_id)
     .executeTakeFirst();
 
@@ -203,6 +214,13 @@ export const disableAccount = async (user_id, reason) => {
     .where("user_id", "=", user_id)
     .executeTakeFirst();
 
+  await logAdminActivity({
+    user_id: admin_user_id,
+    user_action: "Updated",
+    user_module: "User Accounts",
+    description: `Disabled account ${user.email}.`,
+  });
+
   // 5. Return updated account information
   return {
     user_id: Number(user_id),
@@ -211,10 +229,10 @@ export const disableAccount = async (user_id, reason) => {
   };
 };
 
-export const reactivateAccount = async (user_id) => {
+export const reactivateAccount = async (user_id, admin_user_id) => {
   const user = await db
     .selectFrom("user_accounts")
-    .select(["user_id", "role", "account_status"])
+    .select(["user_id", "email", "role", "account_status"])
     .where("user_id", "=", user_id)
     .executeTakeFirst();
 
@@ -237,6 +255,13 @@ export const reactivateAccount = async (user_id) => {
     })
     .where("user_id", "=", user_id)
     .execute();
+
+  await logAdminActivity({
+    user_id: admin_user_id,
+    user_action: "Updated",
+    user_module: "User Accounts",
+    description: `Reactivated account ${user.email}.`,
+  });
 
   return {
     user_id: Number(user_id),

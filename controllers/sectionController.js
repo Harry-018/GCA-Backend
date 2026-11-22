@@ -139,28 +139,42 @@ export const getSectionDetails = async (req, res) => {
     });
   }
 };
+
 export const assignSection = async (req, res) => {
   try {
     const { section_name_id, sy_grade_level_id, adviser_teacher_id } = req.body;
+
     if (!section_name_id) {
-      return res.status(400).json({ message: "section_name_id is required." });
+      return res.status(400).json({
+        message: "section_name_id is required.",
+      });
     }
+
     if (!sy_grade_level_id) {
-      return res
-        .status(400)
-        .json({ message: "sy_grade_level_id is required." });
+      return res.status(400).json({
+        message: "sy_grade_level_id is required.",
+      });
     }
-    const result = await secm.assignSection({
-      section_name_id,
-      sy_grade_level_id,
-      adviser_teacher_id,
+
+    const result = await secm.assignSection(
+      {
+        section_name_id,
+        sy_grade_level_id,
+        adviser_teacher_id,
+      },
+      req.user.user_id,
+    );
+
+    res.status(201).json({
+      message: "Section assigned successfully.",
+      data: result,
     });
-    res
-      .status(201)
-      .json({ message: "Section assigned successfully.", data: result });
   } catch (error) {
     console.error("Error assigning section:", error);
-    res.status(400).json({ message: error.message });
+
+    res.status(400).json({
+      message: error.message,
+    });
   }
 };
 
@@ -168,37 +182,56 @@ export const updateSectionStatus = async (req, res) => {
   try {
     const { section_id } = req.params;
     const { status } = req.body;
-    const result = await secm.updateSectionStatus(Number(section_id), status);
-    res
-      .status(200)
-      .json({ message: "Section status updated successfully.", data: result });
+
+    const result = await secm.updateSectionStatus(
+      Number(section_id),
+      status,
+      req.user.user_id,
+    );
+
+    res.status(200).json({
+      message: "Section status updated successfully.",
+      data: result,
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Failed to update section status.",
-      error: error.message,
+    console.error("Failed to update section status:", error);
+
+    res.status(400).json({
+      message: error.message,
     });
   }
 };
+
 export const changeSectionTeacher = async (req, res) => {
   try {
     const { section_id } = req.params;
     const { adviser_teacher_id } = req.body;
+
     if (!adviser_teacher_id) {
-      return res.status(400).json({ message: "Teacher is required." });
+      return res.status(400).json({
+        message: "Teacher is required.",
+      });
     }
+
     const result = await secm.changeSectionTeacher(
       Number(section_id),
       Number(adviser_teacher_id),
+      req.user.user_id,
     );
-    res
-      .status(200)
-      .json({ message: "Section teacher changed successfully.", data: result });
+
+    res.status(200).json({
+      message: "Section teacher changed successfully.",
+      data: result,
+    });
   } catch (error) {
     console.error("Failed to change section teacher:", error);
-    res.status(400).json({ message: error.message });
+
+    res.status(400).json({
+      message: error.message,
+    });
   }
 };
+
 export const searchStudentsForSection = async (req, res) => {
   try {
     const { section_id } = req.params;
@@ -216,61 +249,127 @@ export const searchStudentsForSection = async (req, res) => {
     });
   }
 };
+
 export const addStudentsToSection = async (req, res) => {
   try {
     const { section_id } = req.params;
     const { student_ids } = req.body;
+
     const result = await secm.addStudentsToSection(
       Number(section_id),
       student_ids,
+      req.user.user_id,
     );
+
     res.status(200).json({
       message: "Students added to section successfully.",
       data: result,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Failed to add students to section:", error);
+
     res.status(400).json({
-      message: "Failed to add students to section.",
-      error: error.message,
+      message: error.message,
     });
   }
 };
+
 export const removeStudentsFromSection = async (req, res) => {
   try {
     const { section_id } = req.params;
     const { student_ids } = req.body;
+
     if (!Array.isArray(student_ids) || student_ids.length === 0) {
-      return res.status(400).json({ message: "Student IDs are required." });
+      return res.status(400).json({
+        message: "Student IDs are required.",
+      });
     }
+
     const result = await secm.removeStudentsFromSection(
       Number(section_id),
       student_ids.map(Number),
+      req.user.user_id,
     );
-    res
-      .status(200)
-      .json({ message: "Students removed from section.", data: result });
+
+    res.status(200).json({
+      message: "Students removed from section successfully.",
+      data: result,
+    });
   } catch (error) {
     console.error("Failed to remove students from section:", error);
-    res.status(400).json({ message: error.message });
+
+    res.status(400).json({
+      message: error.message,
+    });
   }
 };
+
 export const promoteStudents = async (req, res) => {
   try {
     const { student_ids, target_sy_grade_level_id } = req.body;
-    const promoted_by = req.user.user_id;
+
+    if (!Array.isArray(student_ids) || student_ids.length === 0) {
+      return res.status(400).json({
+        message: "Student IDs are required.",
+      });
+    }
+
+    if (!target_sy_grade_level_id) {
+      return res.status(400).json({
+        message: "Target school year and grade level are required.",
+      });
+    }
+
     const result = await secm.promoteStudents(
       student_ids,
       Number(target_sy_grade_level_id),
-      Number(promoted_by),
+      req.user.user_id,
     );
-    res
-      .status(200)
-      .json({ message: "Students promoted successfully.", data: result });
+
+    res.status(200).json({
+      message: "Students promoted successfully.",
+      data: result,
+    });
   } catch (error) {
-    console.error(error);
-    res
-      .status(400)
-      .json({ message: "Failed to promote students.", error: error.message });
+    console.error("Failed to promote students:", error);
+
+    res.status(400).json({
+      message: error.message,
+    });
+  }
+};
+
+export const retainStudents = async (req, res) => {
+  try {
+    const { student_ids, target_sy_grade_level_id } = req.body;
+
+    if (!Array.isArray(student_ids) || student_ids.length === 0) {
+      return res.status(400).json({
+        message: "Student IDs are required.",
+      });
+    }
+
+    if (!target_sy_grade_level_id) {
+      return res.status(400).json({
+        message: "Target school year and grade level are required.",
+      });
+    }
+
+    const result = await secm.retainStudents(
+      student_ids,
+      Number(target_sy_grade_level_id),
+      req.user.user_id,
+    );
+
+    res.status(200).json({
+      message: "Students retained successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Failed to retain students:", error);
+
+    res.status(400).json({
+      message: error.message,
+    });
   }
 };

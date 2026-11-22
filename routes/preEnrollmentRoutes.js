@@ -49,7 +49,7 @@ router.get(
   getRejectionReasons,
 );
 router.patch(
-  "/applications/:application_id/reject",
+  "/applications/reject",
   authenticate,
   authorize("admin"),
   rejectApplicant,

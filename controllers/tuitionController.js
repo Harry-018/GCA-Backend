@@ -55,7 +55,7 @@ export const getGradeLevel = async (req, res) => {
 
 export const createGrade = async (req, res) => {
   try {
-    const result = await tuim.createGrade(req.body);
+    const result = await tuim.createGrade(req.body, req.user.user_id);
 
     res.status(201).json({
       r: result,
@@ -72,7 +72,7 @@ export const createGrade = async (req, res) => {
 
 export const createPaymentOption = async (req, res) => {
   try {
-    const result = await tuim.createPaymentOption(req.body);
+    const result = await tuim.createPaymentOption(req.body, req.user.user_id);
 
     res.status(201).json({
       r: result,
@@ -91,7 +91,11 @@ export const patchFees = async (req, res) => {
   try {
     const { fees_id } = req.params;
 
-    const result = await tuim.patchFees(Number(fees_id), req.body);
+    const result = await tuim.patchFees(
+      Number(fees_id),
+      req.body,
+      req.user.user_id,
+    );
 
     res.status(200).json({
       r: result,
@@ -113,6 +117,7 @@ export const patchPaymentOption = async (req, res) => {
     const result = await tuim.patchPaymentOption(
       Number(payment_option_id),
       req.body,
+      req.user.user_id,
     );
 
     res.status(200).json({
@@ -135,6 +140,7 @@ export const patchGradePaymentOption = async (req, res) => {
     const result = await tuim.patchGradePaymentOption(
       Number(gradelevel_paymentoption_id),
       req.body,
+      req.user.user_id,
     );
 
     res.status(200).json({
@@ -154,7 +160,10 @@ export const deleteGrade = async (req, res) => {
   try {
     const { grade_level_id } = req.params;
 
-    const result = await tuim.deleteGrade(Number(grade_level_id));
+    const result = await tuim.deleteGrade(
+      Number(grade_level_id),
+      req.user.user_id,
+    );
 
     res.status(200).json({
       r: result,
@@ -173,7 +182,10 @@ export const deleteOption = async (req, res) => {
   try {
     const { payment_option_id } = req.body;
 
-    const result = await tuim.deleteOption(Number(payment_option_id));
+    const result = await tuim.deleteOption(
+      Number(payment_option_id),
+      req.user.user_id,
+    );
 
     res.status(200).json({
       r: result,

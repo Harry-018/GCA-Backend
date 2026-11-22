@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import { sql } from "kysely";
+import { logAdminActivity } from "./activityLogsModel.js";
 
 export const getStudentSchoolYears = async () => {
   return await db
@@ -234,7 +235,7 @@ export const getStudentInfo = async (stu_id) => {
     .executeTakeFirst();
 };
 
-export const editStudent = async (stu_id, data) => {
+export const editStudent = async (stu_id, data, user_id) => {
   const allowedStatuses = ["active", "dropout", "transferred"];
 
   if (!allowedStatuses.includes(data.stu_status)) {
@@ -254,6 +255,19 @@ export const editStudent = async (stu_id, data) => {
   if (Number(result.numUpdatedRows) !== 1) {
     throw new Error("Student not found.");
   }
+
+  const student = await db
+    .selectFrom("students")
+    .select("stu_num")
+    .where("stu_id", "=", stu_id)
+    .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Students",
+    description: `Updated student ${student?.stu_num ?? "N/A"} (Status: ${data.stu_status}).`,
+  });
 
   return {
     stu_id: Number(stu_id),

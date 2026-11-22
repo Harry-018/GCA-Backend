@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import { logAdminActivity } from "./activityLogsModel.js";
 
 export const getTuitionGradeLevels = async () => {
   return await db
@@ -61,7 +62,7 @@ export const getGradeLevel = async () => {
     .execute();
 };
 
-export const createGrade = async (data) => {
+export const createGrade = async (data, user_id) => {
   return await db.transaction().execute(async (trx) => {
     // ------------------------------------------------------------
     // 1. Check if grade level is already configured
@@ -121,6 +122,22 @@ export const createGrade = async (data) => {
         .execute();
     }
 
+    const gradeLevel = await trx
+      .selectFrom("grade_levels")
+      .select("grade_level_name")
+      .where("grade_level_id", "=", Number(data.grade_level_id))
+      .executeTakeFirst();
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Created",
+        user_module: "Tuition",
+        description: `Created tuition configuration for grade level "${gradeLevel?.grade_level_name || "the selected grade level"}".`,
+      },
+      trx,
+    );
+
     return {
       fees_id,
       message: "Tuition created successfully.",
@@ -128,7 +145,7 @@ export const createGrade = async (data) => {
   });
 };
 
-export const createPaymentOption = async (data) => {
+export const createPaymentOption = async (data, user_id) => {
   return await db.transaction().execute(async (trx) => {
     // ------------------------------------------------------------
     // 1. Create master payment option
@@ -183,6 +200,16 @@ export const createPaymentOption = async (data) => {
         .execute();
     }
 
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Created",
+        user_module: "Payment Options",
+        description: `Created payment option "${data.option_name}".`,
+      },
+      trx,
+    );
+
     return {
       payment_option_id,
       message: "Payment option created successfully.",
@@ -190,7 +217,7 @@ export const createPaymentOption = async (data) => {
   });
 };
 
-export const patchFees = async (fees_id, data) => {
+export const patchFees = async (fees_id, data, user_id) => {
   return await db.transaction().execute(async (trx) => {
     // ------------------------------------------------------------
     // 1. Update fees
@@ -246,13 +273,34 @@ export const patchFees = async (fees_id, data) => {
         .executeTakeFirst();
     }
 
+    const gradeLevel = await trx
+      .selectFrom("gradelevel_paymentoptions")
+      .innerJoin(
+        "grade_levels",
+        "gradelevel_paymentoptions.grade_level_id",
+        "grade_levels.grade_level_id",
+      )
+      .select("grade_levels.grade_level_name")
+      .where("gradelevel_paymentoptions.fees_id", "=", fees_id)
+      .executeTakeFirst();
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Updated",
+        user_module: "Tuition",
+        description: `Updated fees for grade level "${gradeLevel?.grade_level_name || "the selected grade level"}".`,
+      },
+      trx,
+    );
+
     return {
       message: "Fees updated successfully.",
     };
   });
 };
 
-export const patchPaymentOption = async (payment_option_id, data) => {
+export const patchPaymentOption = async (payment_option_id, data, user_id) => {
   const updateData = {};
 
   if (data.option_name !== undefined) {
@@ -277,12 +325,26 @@ export const patchPaymentOption = async (payment_option_id, data) => {
     .where("payment_option_id", "=", Number(payment_option_id))
     .executeTakeFirst();
 
+  const option = await db
+    .selectFrom("payment_option")
+    .select("option_name")
+    .where("payment_option_id", "=", Number(payment_option_id))
+    .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Payment Options",
+    description: `Updated payment option "${option?.option_name || data.option_name || "the selected payment option"}".`,
+  });
+
   return { payment_option_id: Number(payment_option_id) };
 };
 
 export const patchGradePaymentOption = async (
   gradelevel_paymentoption_id,
   data,
+  user_id,
 ) => {
   return await db.transaction().execute(async (trx) => {
     // ------------------------------------------------------------
@@ -330,6 +392,37 @@ export const patchGradePaymentOption = async (
         Number(gradelevel_paymentoption_id),
       )
       .executeTakeFirst();
+
+    const labels = await trx
+      .selectFrom("gradelevel_paymentoptions as gpo")
+      .innerJoin(
+        "payment_option as po",
+        "po.payment_option_id",
+        "gpo.payment_option_id",
+      )
+      .innerJoin(
+        "grade_levels as gl",
+        "gl.grade_level_id",
+        "gpo.grade_level_id",
+      )
+      .select(["po.option_name", "gl.grade_level_name"])
+      .where(
+        "gpo.gradelevel_paymentoption_id",
+        "=",
+        Number(gradelevel_paymentoption_id),
+      )
+      .executeTakeFirst();
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Updated",
+        user_module: "Tuition",
+        description: `Updated payment option "${labels?.option_name || "the selected payment option"}" for grade level "${labels?.grade_level_name || "the selected grade level"}".`,
+      },
+      trx,
+    );
+
     return {
       gradelevel_paymentoption_id: Number(gradelevel_paymentoption_id),
       discount,
@@ -338,7 +431,7 @@ export const patchGradePaymentOption = async (
   });
 };
 
-export const deleteGrade = async (grade_level_id) => {
+export const deleteGrade = async (grade_level_id, user_id) => {
   return await db.transaction().execute(async (trx) => {
     // ------------------------------------------------------------
     // 1. Find fees associated with this tuition grade
@@ -379,19 +472,35 @@ export const deleteGrade = async (grade_level_id) => {
     // - payment_option
     // ------------------------------------------------------------
 
+    const gradeLevel = await trx
+      .selectFrom("grade_levels")
+      .select("grade_level_name")
+      .where("grade_level_id", "=", Number(grade_level_id))
+      .executeTakeFirst();
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Deleted",
+        user_module: "Tuition",
+        description: `Deleted tuition configuration for grade level "${gradeLevel?.grade_level_name || "the selected grade level"}".`,
+      },
+      trx,
+    );
+
     return {
       message: "Tuition configuration deleted successfully.",
     };
   });
 };
 
-export const deleteOption = async (payment_option_id) => {
+export const deleteOption = async (payment_option_id, user_id) => {
   return await db.transaction().execute(async (trx) => {
     const optionId = Number(payment_option_id);
 
     const option = await trx
       .selectFrom("payment_option")
-      .select("payment_option_id")
+      .select("option_name")
       .where("payment_option_id", "=", optionId)
       .executeTakeFirst();
 
@@ -417,6 +526,16 @@ export const deleteOption = async (payment_option_id) => {
       .deleteFrom("payment_option")
       .where("payment_option_id", "=", optionId)
       .execute();
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Deleted",
+        user_module: "Payment Options",
+        description: `Deleted payment option "${option.option_name || "the selected payment option"}".`,
+      },
+      trx,
+    );
 
     return {
       message: "Payment option deleted successfully.",

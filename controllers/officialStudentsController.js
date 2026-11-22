@@ -131,7 +131,11 @@ export const getStudentEnrollments = async (req, res) => {
 
 export const editStudent = async (req, res) => {
   try {
-    const student = await sm.editStudent(req.params.stu_id, req.body);
+    const student = await sm.editStudent(
+      req.params.stu_id,
+      req.body,
+      req.user.user_id,
+    );
 
     res.status(200).json({
       message: "Successfully edited student.",

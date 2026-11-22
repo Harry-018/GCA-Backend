@@ -1,8 +1,9 @@
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import db from "../config/db.js";
+import { logAdminActivity } from "./activityLogsModel.js";
 
-export const createAccountInvitation = async (user_id) => {
+export const createAccountInvitation = async (user_id, admin_user_id) => {
   const token = crypto.randomBytes(32).toString("hex");
 
   const token_hash = crypto.createHash("sha256").update(token).digest("hex");
@@ -42,6 +43,16 @@ export const createAccountInvitation = async (user_id) => {
         created_at: new Date(),
       })
       .executeTakeFirst();
+
+    await logAdminActivity(
+      {
+        user_id: admin_user_id,
+        user_action: "Created",
+        user_module: "User Accounts",
+        description: `Created account activation invitation for ${user.email}.`,
+      },
+      trx,
+    );
 
     return {
       invitation_id: Number(result.insertId),

@@ -21,6 +21,7 @@ export const editPaymentOption = async (req, res) => {
     const editOption = await po.editPaymentOption(
       req.params.payment_option_id,
       req.body,
+      req.user.user_id,
     );
     res.status(200).json({ data: editOption });
   } catch (error) {
@@ -81,7 +82,10 @@ export const addFeesPaymentInGradeLevel = async (req, res) => {
         .json({ message: "grade_level_id and amount are required" });
     }
 
-    const addFees = await po.addFeesPaymentInGradeLevel(req.body);
+    const addFees = await po.addFeesPaymentInGradeLevel(
+      req.body,
+      req.user.user_id,
+    );
 
     res.status(201).json({ data: addFees });
   } catch (error) {
@@ -116,6 +120,7 @@ export const editGradeLevelFees = async (req, res) => {
     const updated = await po.editGradeLevelFees(
       req.params.grade_level_id,
       req.body,
+      req.user.user_id,
     );
 
     res.status(200).json({ data: updated });
@@ -132,7 +137,10 @@ export const editGradeLevelFees = async (req, res) => {
 
 export const deleteGradeLevelFees = async (req, res) => {
   try {
-    const result = await po.deleteGradeLevelFees(req.params.grade_level_id);
+    const result = await po.deleteGradeLevelFees(
+      req.params.grade_level_id,
+      req.user.user_id,
+    );
 
     res
       .status(200)

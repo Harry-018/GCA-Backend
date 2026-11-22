@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import { sql } from "kysely";
+import { logAdminActivity } from "./activityLogsModel.js";
 
 export const getInquiries = async (page = 1, limit = 10) => {
   const offset = (page - 1) * limit;
@@ -77,6 +78,13 @@ export const replyToInquiry = async (inquire_id, answer, user_id) => {
     .where("inquire_id", "=", inquire_id)
     .execute();
 
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Inquiries",
+    description: `Replied to inquiry from ${inquiry.email}.`,
+  });
+
   return {
     ...inquiry,
     answer,
@@ -84,7 +92,13 @@ export const replyToInquiry = async (inquire_id, answer, user_id) => {
   };
 };
 
-export const markInquiryAsRead = async (inquire_id) => {
+export const markInquiryAsRead = async (inquire_id, user_id) => {
+  const inquiry = await db
+    .selectFrom("inquiries")
+    .select("email")
+    .where("inquire_id", "=", inquire_id)
+    .executeTakeFirst();
+
   const result = await db
     .updateTable("inquiries")
     .set({
@@ -92,6 +106,13 @@ export const markInquiryAsRead = async (inquire_id) => {
     })
     .where("inquire_id", "=", inquire_id)
     .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Inquiries",
+    description: `Marked inquiry from ${inquiry?.email ?? "unknown sender"} as read.`,
+  });
 
   return result;
 };

@@ -13,6 +13,7 @@ import {
   promoteStudents,
   getAdviserTeachers,
   getSections,
+  retainStudents,
 } from "../controllers/sectionController.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 const router = express.Router();
@@ -97,4 +98,6 @@ router.patch(
   authorize("admin"),
   promoteStudents,
 );
+
+router.post("/retain", authenticate, authorize("admin"), retainStudents);
 export default router;

@@ -23,12 +23,15 @@ export const getTransportation = async (req, res) => {
 
 export const addTransportation = async (req, res) => {
   try {
-    const result = await tranm.addTransportation({
-      location: req.body.location,
-      distance: req.body.distance,
-      price: req.body.price,
-      city: req.body.city,
-    });
+    const result = await tranm.addTransportation(
+      {
+        location: req.body.location,
+        distance: req.body.distance,
+        price: req.body.price,
+        city: req.body.city,
+      },
+      req.user.user_id,
+    );
 
     res.status(201).json(result);
   } catch (error) {
@@ -48,12 +51,16 @@ export const editTransportation = async (req, res) => {
   try {
     const { transportation_id } = req.params;
 
-    const result = await tranm.editTransportation(Number(transportation_id), {
-      location: req.body.location,
-      distance: req.body.distance,
-      price: req.body.price,
-      city: req.body.city,
-    });
+    const result = await tranm.editTransportation(
+      Number(transportation_id),
+      {
+        location: req.body.location,
+        distance: req.body.distance,
+        price: req.body.price,
+        city: req.body.city,
+      },
+      req.user.user_id,
+    );
 
     res.status(200).json(result);
   } catch (error) {
@@ -73,7 +80,10 @@ export const deleteTransportation = async (req, res) => {
   try {
     const { transportation_id } = req.params;
 
-    const result = await tranm.deleteTransportation(Number(transportation_id));
+    const result = await tranm.deleteTransportation(
+      Number(transportation_id),
+      req.user.user_id,
+    );
 
     res.status(200).json(result);
   } catch (error) {

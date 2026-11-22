@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import { sql } from "kysely";
+import { logAdminActivity } from "./activityLogsModel.js";
 
 export const getTeachers = async ({
   status = "all",
@@ -131,7 +132,7 @@ export const getTeacherInfo = async (teacher_id) => {
   return teacher;
 };
 
-export const updateTeacher = async (teacher_id, data) => {
+export const updateTeacher = async (teacher_id, data, user_id) => {
   const result = await db
     .updateTable("teachers")
     .set({
@@ -143,6 +144,19 @@ export const updateTeacher = async (teacher_id, data) => {
   if (Number(result.numUpdatedRows) === 0) {
     return null;
   }
+
+  const teacher = await db
+    .selectFrom("teachers")
+    .select("teacher_num")
+    .where("teacher_id", "=", teacher_id)
+    .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Teachers",
+    description: `Updated teacher ${teacher?.teacher_num ?? "N/A"} (Status: ${data.teacher_status}).`,
+  });
 
   return {
     teacher_id,
@@ -203,7 +217,7 @@ export const editTeacherInfo = async (data) => {
   const teacher = await db
     .selectFrom("teachers as t")
     .innerJoin("teacher_info as ti", "t.teacher_info_id", "ti.teacher_info_id")
-    .select(["t.teacher_id", "ti.teacher_info_id"])
+    .select(["t.teacher_id", "ti.teacher_info_id", "t.teacher_num"])
     .where("ti.user_id", "=", data.user_id)
     .executeTakeFirst();
 
@@ -219,6 +233,13 @@ export const editTeacherInfo = async (data) => {
     })
     .where("teacher_info_id", "=", teacher.teacher_info_id)
     .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id: data.user_id,
+    user_action: "Updated",
+    user_module: "Teachers",
+    description: `Updated teacher information (Teacher: ${teacher.teacher_num}).`,
+  });
 
   return { success: true };
 };
@@ -485,13 +506,32 @@ export const saveAttendance = async (
       attendance_status: record.attendance_status,
     }));
 
-    return await trx
+    const result = await trx
       .insertInto("attendance")
       .values(recordsToSave)
       .onDuplicateKeyUpdate({
         attendance_status: sql`VALUES(attendance_status)`,
       })
       .execute();
+
+    const sectionInfo = await trx
+      .selectFrom("sections as s")
+      .innerJoin("section_names as sn", "s.section_name_id", "sn.section_name_id")
+      .select("sn.section_name")
+      .where("s.section_id", "=", section_id)
+      .executeTakeFirst();
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Updated",
+        user_module: "Teachers",
+        description: `Saved attendance for ${sectionInfo?.section_name ?? "section"} on ${attendance_date} (${recordsToSave.length} record(s)).`,
+      },
+      trx,
+    );
+
+    return result;
   });
 };
 
@@ -967,6 +1007,35 @@ export const uploadGradesToStudents = async (
         .execute();
     }
 
+    const sectionInfo = await trx
+      .selectFrom("sections as s")
+      .innerJoin("section_names as sn", "s.section_name_id", "sn.section_name_id")
+      .select("sn.section_name")
+      .where("s.section_id", "=", Number(section_id))
+      .executeTakeFirst();
+
+    const subjectInfo = await trx
+      .selectFrom("subjects")
+      .select("subject_name")
+      .where("subject_id", "=", Number(subject_id))
+      .executeTakeFirst();
+
+    const quarterInfo = await trx
+      .selectFrom("quarter")
+      .select("quarter_name")
+      .where("quarter_id", "=", Number(quarter_id))
+      .executeTakeFirst();
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Updated",
+        user_module: "Teachers",
+        description: `Updated ${records.length} student grade(s) for ${sectionInfo?.section_name ?? "section"}, ${subjectInfo?.subject_name ?? "subject"}, and ${quarterInfo?.quarter_name ?? "quarter"}.`,
+      },
+      trx,
+    );
+
     return {
       uploaded_count: records.length,
       message: "Student grades uploaded successfully.",
@@ -1064,7 +1133,7 @@ export const uploadQuarterlyRemarks = async (
   // 2. Validate quarter
   const quarter = await db
     .selectFrom("quarter")
-    .select("quarter_id")
+    .select(["quarter_id", "quarter_name"])
     .where("quarter_id", "=", quarter_id)
     .executeTakeFirst();
 
@@ -1147,6 +1216,23 @@ export const uploadQuarterlyRemarks = async (
         })
         .executeTakeFirst();
     }
+
+    const sectionInfo = await trx
+      .selectFrom("sections as s")
+      .innerJoin("section_names as sn", "s.section_name_id", "sn.section_name_id")
+      .select("sn.section_name")
+      .where("s.section_id", "=", section_id)
+      .executeTakeFirst();
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Updated",
+        user_module: "Teachers",
+        description: `Updated ${remarkMap.size} quarterly remark(s) for ${sectionInfo?.section_name ?? "section"} and ${quarter.quarter_name}.`,
+      },
+      trx,
+    );
   });
 
   return {

@@ -28,6 +28,7 @@ export const updateSchoolInformation = async (req, res) => {
   try {
     const data = {
       ...req.body,
+      user_id: req.user.user_id,
     };
 
     if (req.file) {
@@ -100,7 +101,7 @@ export const createSectionName = async (req, res) => {
       });
     }
 
-    const result = await setm.createSectionName(section_name);
+    const result = await setm.createSectionName(section_name, req.user.user_id);
 
     res.status(201).json({
       message: "Section name created successfully.",
@@ -129,6 +130,7 @@ export const renameSectionName = async (req, res) => {
     const result = await setm.renameSectionName(
       Number(section_name_id),
       section_name,
+      req.user.user_id,
     );
 
     res.status(200).json({
@@ -148,7 +150,10 @@ export const archiveSectionName = async (req, res) => {
   try {
     const { section_name_id } = req.params;
 
-    const result = await setm.archiveSectionName(Number(section_name_id));
+    const result = await setm.archiveSectionName(
+      Number(section_name_id),
+      req.user.user_id,
+    );
 
     res.status(200).json({
       message: "Section name archived successfully.",
@@ -167,7 +172,10 @@ export const restoreSectionName = async (req, res) => {
   try {
     const { section_name_id } = req.params;
 
-    const result = await setm.restoreSectionName(Number(section_name_id));
+    const result = await setm.restoreSectionName(
+      Number(section_name_id),
+      req.user.user_id,
+    );
 
     res.status(200).json({
       message: "Section name restored successfully.",
@@ -230,6 +238,7 @@ export const addSubjectToGradeLevel = async (req, res) => {
     const result = await setm.addSubjectToGradeLevel({
       gradeLevelId: Number(gradeLevelId),
       subjectId: Number(subject_id),
+      user_id: req.user.user_id,
     });
 
     res.status(201).json({
@@ -251,6 +260,7 @@ export const removeSubjectFromGradeLevel = async (req, res) => {
 
     const result = await setm.removeSubjectFromGradeLevel(
       Number(syGradelevelSubjectId),
+      req.user.user_id,
     );
 
     res.status(200).json({
@@ -276,7 +286,7 @@ export const createSubject = async (req, res) => {
       });
     }
 
-    const subject = await setm.createSubject(subject_name);
+    const subject = await setm.createSubject(subject_name, req.user.user_id);
 
     res.status(201).json({
       message: "Subject created successfully.",
@@ -294,7 +304,7 @@ export const removeSubject = async (req, res) => {
   try {
     const { subjectId } = req.params;
 
-    const result = await setm.removeSubject(Number(subjectId));
+    const result = await setm.removeSubject(Number(subjectId), req.user.user_id);
 
     res.status(200).json({
       message: "Subject removed successfully.",
@@ -320,7 +330,11 @@ export const renameSubject = async (req, res) => {
       });
     }
 
-    const subject = await setm.renameSubject(Number(subjectId), subject_name);
+    const subject = await setm.renameSubject(
+      Number(subjectId),
+      subject_name,
+      req.user.user_id,
+    );
 
     res.status(200).json({
       message: "Subject renamed successfully.",
@@ -343,6 +357,7 @@ export const createSkill = async (req, res) => {
       subject_id: Number(subject_id),
       skill_name,
       description,
+      user_id: req.user.user_id,
     });
 
     res.status(201).json({
@@ -381,10 +396,14 @@ export const updateSkill = async (req, res) => {
     const { skillId } = req.params;
     const { skill_name, description } = req.body;
 
-    const skill = await setm.updateSkill(Number(skillId), {
-      skill_name,
-      description,
-    });
+    const skill = await setm.updateSkill(
+      Number(skillId),
+      {
+        skill_name,
+        description,
+      },
+      req.user.user_id,
+    );
 
     res.status(200).json({
       message: "Skill updated successfully.",
@@ -403,7 +422,7 @@ export const removeSkill = async (req, res) => {
   try {
     const { skillId } = req.params;
 
-    const result = await setm.removeSkill(Number(skillId));
+    const result = await setm.removeSkill(Number(skillId), req.user.user_id);
 
     res.status(200).json({
       message: "Skill removed successfully.",
@@ -440,7 +459,7 @@ export const reactivateSkill = async (req, res) => {
   try {
     const { skillId } = req.params;
 
-    const result = await setm.reactivateSkill(Number(skillId));
+    const result = await setm.reactivateSkill(Number(skillId), req.user.user_id);
 
     res.status(200).json({
       message: "Skill reactivated successfully.",

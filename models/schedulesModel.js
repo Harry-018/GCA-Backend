@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import { logAdminActivity } from "./activityLogsModel.js";
 
 //works
 export const getScheduleSchoolYears = async () => {
@@ -185,446 +186,477 @@ export const getScheduleTimes = async () => {
     .execute();
 };
 
-export const createSchedule = async (data) => {
-  /*
-   * ----------------------------------------------------------
-   * Validate section
-   * ----------------------------------------------------------
-   */
-
-  const section = await db
-    .selectFrom("sections")
-    .select(["section_id", "sy_grade_level_id", "section_status"])
-    .where("section_id", "=", data.section_id)
-    .executeTakeFirst();
-
-  if (!section) {
-    throw new Error("Section not found.");
-  }
-
-  if (section.section_status !== "active") {
-    throw new Error("Cannot add a schedule to an inactive section.");
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Validate subject belongs to the section's grade level
-   * ----------------------------------------------------------
-   */
-
-  const subject = await db
-    .selectFrom("schoolyears_gradelevels_subjects as sgls")
-    .innerJoin("subjects as sub", "sgls.subject_id", "sub.subject_id")
+const getScheduleActivityDetails = async (executor, schedule_id) => {
+  const schedule = await executor
+    .selectFrom("schedules as sc")
+    .innerJoin("sections as sec", "sec.section_id", "sc.section_id")
+    .innerJoin(
+      "schoolyears_gradelevels as sygl",
+      "sygl.sy_grade_level_id",
+      "sec.sy_grade_level_id",
+    )
+    .innerJoin("grade_levels as gl", "gl.grade_level_id", "sygl.grade_level_id")
+    .innerJoin(
+      "section_name_versions as snv",
+      "snv.section_name_version_id",
+      "sec.section_name_version_id",
+    )
+    .innerJoin("subjects as sub", "sub.subject_id", "sc.subject_id")
+    .innerJoin("teachers as t", "t.teacher_id", "sc.teacher_id")
+    .innerJoin("teacher_info as ti", "ti.teacher_info_id", "t.teacher_info_id")
+    .innerJoin("rooms as r", "r.room_id", "sc.room_id")
+    .innerJoin("week_days as wd", "wd.day_id", "sc.day_id")
+    .innerJoin("schedule_time as st", "st.sched_time_id", "sc.sched_time_id")
     .select([
-      "sgls.sy_gradelevel_subject_id",
-      "sgls.sy_grade_level_id",
-      "sub.subject_id",
+      "gl.grade_level_name",
+      "snv.section_name",
       "sub.subject_name",
+      "ti.first_name",
+      "ti.middle_name",
+      "ti.last_name",
+      "r.room_name",
+      "wd.day_name",
+      "st.sched_start_time",
+      "st.sched_end_time",
     ])
-    .where("sgls.sy_grade_level_id", "=", section.sy_grade_level_id)
-    .where("sgls.subject_id", "=", data.subject_id)
+    .where("sc.schedule_id", "=", schedule_id)
     .executeTakeFirst();
 
-  if (!subject) {
-    throw new Error(
-      "The selected subject is not assigned to this section's grade level.",
-    );
+  if (!schedule) {
+    throw new Error("Schedule details not found.");
   }
 
-  /*
-   * ----------------------------------------------------------
-   * Validate teacher
-   * ----------------------------------------------------------
-   */
-
-  const teacher = await db
-    .selectFrom("teachers")
-    .select(["teacher_id", "teacher_status"])
-    .where("teacher_id", "=", data.teacher_id)
-    .executeTakeFirst();
-
-  if (!teacher) {
-    throw new Error("Teacher not found.");
-  }
-
-  if (teacher.teacher_status !== "active") {
-    throw new Error("Selected teacher is not active.");
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Validate room
-   * ----------------------------------------------------------
-   */
-
-  const room = await db
-    .selectFrom("rooms")
-    .select("room_id")
-    .where("room_id", "=", data.room_id)
-    .executeTakeFirst();
-
-  if (!room) {
-    throw new Error("Room not found.");
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Validate day
-   * ----------------------------------------------------------
-   */
-
-  const day = await db
-    .selectFrom("week_days")
-    .select("day_id")
-    .where("day_id", "=", data.day_id)
-    .executeTakeFirst();
-
-  if (!day) {
-    throw new Error("Day not found.");
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Validate schedule time
-   * ----------------------------------------------------------
-   */
-
-  const scheduleTime = await db
-    .selectFrom("schedule_time")
-    .select("sched_time_id")
-    .where("sched_time_id", "=", data.sched_time_id)
-    .executeTakeFirst();
-
-  if (!scheduleTime) {
-    throw new Error("Schedule time not found.");
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Check section conflict
-   *
-   * A section cannot have two subjects at the same
-   * day and time.
-   * ----------------------------------------------------------
-   */
-
-  const sectionConflict = await db
-    .selectFrom("schedules")
-    .select("schedule_id")
-    .where("section_id", "=", data.section_id)
-    .where("day_id", "=", data.day_id)
-    .where("sched_time_id", "=", data.sched_time_id)
-    .executeTakeFirst();
-
-  if (sectionConflict) {
-    throw new Error(
-      "This section already has a schedule at the selected day and time.",
-    );
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Check teacher conflict
-   *
-   * A teacher cannot teach two sections at the same
-   * day and time.
-   * ----------------------------------------------------------
-   */
-
-  const teacherConflict = await db
-    .selectFrom("schedules")
-    .select("schedule_id")
-    .where("teacher_id", "=", data.teacher_id)
-    .where("day_id", "=", data.day_id)
-    .where("sched_time_id", "=", data.sched_time_id)
-    .executeTakeFirst();
-
-  if (teacherConflict) {
-    throw new Error(
-      "This teacher is already assigned to another schedule at the selected day and time.",
-    );
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Check room conflict
-   *
-   * A room cannot be used by two sections at the same
-   * day and time.
-   * ----------------------------------------------------------
-   */
-
-  const roomConflict = await db
-    .selectFrom("schedules")
-    .select("schedule_id")
-    .where("room_id", "=", data.room_id)
-    .where("day_id", "=", data.day_id)
-    .where("sched_time_id", "=", data.sched_time_id)
-    .executeTakeFirst();
-
-  if (roomConflict) {
-    throw new Error(
-      "This room is already being used at the selected day and time.",
-    );
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Insert schedule
-   * ----------------------------------------------------------
-   */
-
-  const result = await db
-    .insertInto("schedules")
-    .values({
-      section_id: data.section_id,
-      sched_time_id: data.sched_time_id,
-      room_id: data.room_id,
-      teacher_id: data.teacher_id,
-      subject_id: data.subject_id,
-      day_id: data.day_id,
-    })
-    .executeTakeFirst();
+  const teacherName = [
+    schedule.first_name,
+    schedule.middle_name,
+    schedule.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return {
-    schedule_id: Number(result.insertId),
+    ...schedule,
+    teacher_name: teacherName,
   };
 };
 
-export const editSchedule = async (schedule_id, data) => {
-  /*
-   * ----------------------------------------------------------
-   * Get existing schedule
-   * ----------------------------------------------------------
-   */
-
-  const existingSchedule = await db
-    .selectFrom("schedules")
-    .select(["schedule_id", "section_id"])
-    .where("schedule_id", "=", schedule_id)
-    .executeTakeFirst();
-
-  if (!existingSchedule) {
-    throw new Error("Schedule not found.");
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Validate section
-   * ----------------------------------------------------------
-   */
-
-  const section = await db
-    .selectFrom("sections")
-    .select(["section_id", "sy_grade_level_id", "section_status"])
-    .where("section_id", "=", data.section_id)
-    .executeTakeFirst();
-
-  if (!section) {
-    throw new Error("Section not found.");
-  }
-
-  if (section.section_status !== "active") {
-    throw new Error("Cannot assign a schedule to an inactive section.");
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Validate subject
-   * ----------------------------------------------------------
-   */
-
-  const subject = await db
-    .selectFrom("schoolyears_gradelevels_subjects as sgls")
-    .innerJoin("subjects as sub", "sgls.subject_id", "sub.subject_id")
-    .select([
-      "sgls.sy_gradelevel_subject_id",
-      "sgls.sy_grade_level_id",
-      "sub.subject_id",
-      "sub.subject_name",
-    ])
-    .where("sgls.sy_grade_level_id", "=", section.sy_grade_level_id)
-    .where("sgls.subject_id", "=", data.subject_id)
-    .executeTakeFirst();
-
-  if (!subject) {
-    throw new Error(
-      "The selected subject is not assigned to this section's grade level.",
-    );
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Validate teacher
-   * ----------------------------------------------------------
-   */
-
-  const teacher = await db
-    .selectFrom("teachers")
-    .select(["teacher_id", "teacher_status"])
-    .where("teacher_id", "=", data.teacher_id)
-    .executeTakeFirst();
-
-  if (!teacher) {
-    throw new Error("Teacher not found.");
-  }
-
-  if (teacher.teacher_status !== "active") {
-    throw new Error("Selected teacher is not active.");
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Validate room
-   * ----------------------------------------------------------
-   */
-
-  const room = await db
-    .selectFrom("rooms")
-    .select("room_id")
-    .where("room_id", "=", data.room_id)
-    .executeTakeFirst();
-
-  if (!room) {
-    throw new Error("Room not found.");
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Validate day
-   * ----------------------------------------------------------
-   */
-
-  const day = await db
-    .selectFrom("week_days")
-    .select("day_id")
-    .where("day_id", "=", data.day_id)
-    .executeTakeFirst();
-
-  if (!day) {
-    throw new Error("Day not found.");
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Validate schedule time
-   * ----------------------------------------------------------
-   */
-
-  const scheduleTime = await db
-    .selectFrom("schedule_time")
-    .select("sched_time_id")
-    .where("sched_time_id", "=", data.sched_time_id)
-    .executeTakeFirst();
-
-  if (!scheduleTime) {
-    throw new Error("Schedule time not found.");
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Check section conflict
-   *
-   * Exclude the schedule currently being edited.
-   * ----------------------------------------------------------
-   */
-
-  const sectionConflict = await db
-    .selectFrom("schedules")
-    .select("schedule_id")
-    .where("section_id", "=", data.section_id)
-    .where("day_id", "=", data.day_id)
-    .where("sched_time_id", "=", data.sched_time_id)
-    .where("schedule_id", "!=", schedule_id)
-    .executeTakeFirst();
-
-  if (sectionConflict) {
-    throw new Error(
-      "This section already has a schedule at the selected day and time.",
-    );
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Check teacher conflict
-   * ----------------------------------------------------------
-   */
-
-  const teacherConflict = await db
-    .selectFrom("schedules")
-    .select("schedule_id")
-    .where("teacher_id", "=", data.teacher_id)
-    .where("day_id", "=", data.day_id)
-    .where("sched_time_id", "=", data.sched_time_id)
-    .where("schedule_id", "!=", schedule_id)
-    .executeTakeFirst();
-
-  if (teacherConflict) {
-    throw new Error(
-      "This teacher is already assigned to another schedule at the selected day and time.",
-    );
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Check room conflict
-   * ----------------------------------------------------------
-   */
-
-  const roomConflict = await db
-    .selectFrom("schedules")
-    .select("schedule_id")
-    .where("room_id", "=", data.room_id)
-    .where("day_id", "=", data.day_id)
-    .where("sched_time_id", "=", data.sched_time_id)
-    .where("schedule_id", "!=", schedule_id)
-    .executeTakeFirst();
-
-  if (roomConflict) {
-    throw new Error(
-      "This room is already being used at the selected day and time.",
-    );
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * Update
-   * ----------------------------------------------------------
-   */
-
-  const result = await db
-    .updateTable("schedules")
-    .set({
-      section_id: data.section_id,
-      sched_time_id: data.sched_time_id,
-      room_id: data.room_id,
-      teacher_id: data.teacher_id,
-      subject_id: data.subject_id,
-      day_id: data.day_id,
-    })
-    .where("schedule_id", "=", schedule_id)
-    .executeTakeFirst();
-
-  if (Number(result.numUpdatedRows) !== 1) {
-    throw new Error("Schedule not found.");
-  }
-
-  return {
-    schedule_id: Number(schedule_id),
-  };
+const formatScheduleDescription = (schedule) => {
+  return `${schedule.subject_name} for ${schedule.grade_level_name} - ${schedule.section_name}, taught by ${schedule.teacher_name}, in ${schedule.room_name} on ${schedule.day_name} (${schedule.sched_start_time} - ${schedule.sched_end_time})`;
 };
 
-export const deleteSchedule = async (schedule_id) => {
-  const result = await db
-    .deleteFrom("schedules")
-    .where("schedule_id", "=", schedule_id)
-    .executeTakeFirst();
+export const createSchedule = async (data, user_id) => {
+  return await db.transaction().execute(async (trx) => {
+    // 1. Validate section and retrieve its school year
+    const section = await trx
+      .selectFrom("sections as sec")
+      .innerJoin(
+        "schoolyears_gradelevels as sygl",
+        "sygl.sy_grade_level_id",
+        "sec.sy_grade_level_id",
+      )
+      .select([
+        "sec.section_id",
+        "sec.sy_grade_level_id",
+        "sec.section_status",
+        "sygl.school_year_id",
+      ])
+      .where("sec.section_id", "=", data.section_id)
+      .executeTakeFirst();
 
-  if (Number(result.numDeletedRows) !== 1) {
-    throw new Error("Schedule not found.");
-  }
+    if (!section) {
+      throw new Error("Section not found.");
+    }
 
-  return {
-    schedule_id: Number(schedule_id),
-  };
+    if (section.section_status !== "active") {
+      throw new Error("Cannot add a schedule to an inactive section.");
+    }
+
+    // 2. Validate subject belongs to the section's grade level
+    const subject = await trx
+      .selectFrom("schoolyears_gradelevels_subjects as sgls")
+      .innerJoin("subjects as sub", "sgls.subject_id", "sub.subject_id")
+      .select([
+        "sgls.sy_gradelevel_subject_id",
+        "sgls.sy_grade_level_id",
+        "sub.subject_id",
+        "sub.subject_name",
+      ])
+      .where("sgls.sy_grade_level_id", "=", section.sy_grade_level_id)
+      .where("sgls.subject_id", "=", data.subject_id)
+      .executeTakeFirst();
+
+    if (!subject) {
+      throw new Error(
+        "The selected subject is not assigned to this section's grade level.",
+      );
+    }
+
+    // 3. Validate teacher
+    const teacher = await trx
+      .selectFrom("teachers")
+      .select(["teacher_id", "teacher_status"])
+      .where("teacher_id", "=", data.teacher_id)
+      .executeTakeFirst();
+
+    if (!teacher) {
+      throw new Error("Teacher not found.");
+    }
+
+    if (teacher.teacher_status !== "active") {
+      throw new Error("Selected teacher is not active.");
+    }
+
+    // 4. Validate room
+    const room = await trx
+      .selectFrom("rooms")
+      .select("room_id")
+      .where("room_id", "=", data.room_id)
+      .executeTakeFirst();
+
+    if (!room) {
+      throw new Error("Room not found.");
+    }
+
+    // 5. Validate day
+    const day = await trx
+      .selectFrom("week_days")
+      .select("day_id")
+      .where("day_id", "=", data.day_id)
+      .executeTakeFirst();
+
+    if (!day) {
+      throw new Error("Day not found.");
+    }
+
+    // 6. Validate schedule time
+    const scheduleTime = await trx
+      .selectFrom("schedule_time")
+      .select("sched_time_id")
+      .where("sched_time_id", "=", data.sched_time_id)
+      .executeTakeFirst();
+
+    if (!scheduleTime) {
+      throw new Error("Schedule time not found.");
+    }
+
+    // 7. Check section conflict
+    const sectionConflict = await trx
+      .selectFrom("schedules")
+      .select("schedule_id")
+      .where("section_id", "=", data.section_id)
+      .where("day_id", "=", data.day_id)
+      .where("sched_time_id", "=", data.sched_time_id)
+      .executeTakeFirst();
+
+    if (sectionConflict) {
+      throw new Error(
+        "This section already has a schedule at the selected day and time.",
+      );
+    }
+
+    // 8. Check teacher conflict within the same school year
+    const teacherConflict = await trx
+      .selectFrom("schedules as sc")
+      .innerJoin("sections as sec", "sec.section_id", "sc.section_id")
+      .innerJoin(
+        "schoolyears_gradelevels as sygl",
+        "sygl.sy_grade_level_id",
+        "sec.sy_grade_level_id",
+      )
+      .select("sc.schedule_id")
+      .where("sc.teacher_id", "=", data.teacher_id)
+      .where("sc.day_id", "=", data.day_id)
+      .where("sc.sched_time_id", "=", data.sched_time_id)
+      .where("sygl.school_year_id", "=", section.school_year_id)
+      .executeTakeFirst();
+
+    if (teacherConflict) {
+      throw new Error(
+        "This teacher is already assigned to another schedule at the selected day and time.",
+      );
+    }
+
+    // 9. Check room conflict within the same school year
+    const roomConflict = await trx
+      .selectFrom("schedules as sc")
+      .innerJoin("sections as sec", "sec.section_id", "sc.section_id")
+      .innerJoin(
+        "schoolyears_gradelevels as sygl",
+        "sygl.sy_grade_level_id",
+        "sec.sy_grade_level_id",
+      )
+      .select("sc.schedule_id")
+      .where("sc.room_id", "=", data.room_id)
+      .where("sc.day_id", "=", data.day_id)
+      .where("sc.sched_time_id", "=", data.sched_time_id)
+      .where("sygl.school_year_id", "=", section.school_year_id)
+      .executeTakeFirst();
+
+    if (roomConflict) {
+      throw new Error(
+        "This room is already being used at the selected day and time.",
+      );
+    }
+
+    // 10. Insert schedule
+    const result = await trx
+      .insertInto("schedules")
+      .values({
+        section_id: data.section_id,
+        sched_time_id: data.sched_time_id,
+        room_id: data.room_id,
+        teacher_id: data.teacher_id,
+        subject_id: data.subject_id,
+        day_id: data.day_id,
+      })
+      .executeTakeFirst();
+
+    const schedule_id = Number(result.insertId);
+
+    // 11. Retrieve schedule details for activity log
+    const schedule = await getScheduleActivityDetails(trx, schedule_id);
+
+    // 12. Log activity
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Created",
+        user_module: "Schedules",
+        description: `Created schedule: ${formatScheduleDescription(schedule)}.`,
+      },
+      trx,
+    );
+
+    return { schedule_id };
+  });
+};
+
+export const editSchedule = async (schedule_id, data, user_id) => {
+  return await db.transaction().execute(async (trx) => {
+    // 1. Retrieve existing schedule details
+    const existingSchedule = await getScheduleActivityDetails(trx, schedule_id);
+
+    if (!existingSchedule) {
+      throw new Error("Schedule not found.");
+    }
+
+    // 2. Validate section and retrieve its school year
+    const section = await trx
+      .selectFrom("sections as sec")
+      .innerJoin(
+        "schoolyears_gradelevels as sygl",
+        "sygl.sy_grade_level_id",
+        "sec.sy_grade_level_id",
+      )
+      .select([
+        "sec.section_id",
+        "sec.sy_grade_level_id",
+        "sec.section_status",
+        "sygl.school_year_id",
+      ])
+      .where("sec.section_id", "=", data.section_id)
+      .executeTakeFirst();
+
+    if (!section) {
+      throw new Error("Section not found.");
+    }
+
+    if (section.section_status !== "active") {
+      throw new Error("Cannot assign a schedule to an inactive section.");
+    }
+
+    // 3. Validate subject belongs to the section's grade level
+    const subject = await trx
+      .selectFrom("schoolyears_gradelevels_subjects as sgls")
+      .innerJoin("subjects as sub", "sgls.subject_id", "sub.subject_id")
+      .select([
+        "sgls.sy_gradelevel_subject_id",
+        "sgls.sy_grade_level_id",
+        "sub.subject_id",
+        "sub.subject_name",
+      ])
+      .where("sgls.sy_grade_level_id", "=", section.sy_grade_level_id)
+      .where("sgls.subject_id", "=", data.subject_id)
+      .executeTakeFirst();
+
+    if (!subject) {
+      throw new Error(
+        "The selected subject is not assigned to this section's grade level.",
+      );
+    }
+
+    // 4. Validate teacher
+    const teacher = await trx
+      .selectFrom("teachers")
+      .select(["teacher_id", "teacher_status"])
+      .where("teacher_id", "=", data.teacher_id)
+      .executeTakeFirst();
+
+    if (!teacher) {
+      throw new Error("Teacher not found.");
+    }
+
+    if (teacher.teacher_status !== "active") {
+      throw new Error("Selected teacher is not active.");
+    }
+
+    // 5. Validate room
+    const room = await trx
+      .selectFrom("rooms")
+      .select("room_id")
+      .where("room_id", "=", data.room_id)
+      .executeTakeFirst();
+
+    if (!room) {
+      throw new Error("Room not found.");
+    }
+
+    // 6. Validate day
+    const day = await trx
+      .selectFrom("week_days")
+      .select("day_id")
+      .where("day_id", "=", data.day_id)
+      .executeTakeFirst();
+
+    if (!day) {
+      throw new Error("Day not found.");
+    }
+
+    // 7. Validate schedule time
+    const scheduleTime = await trx
+      .selectFrom("schedule_time")
+      .select("sched_time_id")
+      .where("sched_time_id", "=", data.sched_time_id)
+      .executeTakeFirst();
+
+    if (!scheduleTime) {
+      throw new Error("Schedule time not found.");
+    }
+
+    // 8. Check section conflict
+    const sectionConflict = await trx
+      .selectFrom("schedules")
+      .select("schedule_id")
+      .where("section_id", "=", data.section_id)
+      .where("day_id", "=", data.day_id)
+      .where("sched_time_id", "=", data.sched_time_id)
+      .where("schedule_id", "!=", schedule_id)
+      .executeTakeFirst();
+
+    if (sectionConflict) {
+      throw new Error(
+        "This section already has a schedule at the selected day and time.",
+      );
+    }
+
+    // 9. Check teacher conflict within the same school year
+    const teacherConflict = await trx
+      .selectFrom("schedules as sc")
+      .innerJoin("sections as sec", "sec.section_id", "sc.section_id")
+      .innerJoin(
+        "schoolyears_gradelevels as sygl",
+        "sygl.sy_grade_level_id",
+        "sec.sy_grade_level_id",
+      )
+      .select("sc.schedule_id")
+      .where("sc.teacher_id", "=", data.teacher_id)
+      .where("sc.day_id", "=", data.day_id)
+      .where("sc.sched_time_id", "=", data.sched_time_id)
+      .where("sygl.school_year_id", "=", section.school_year_id)
+      .where("sc.schedule_id", "!=", schedule_id)
+      .executeTakeFirst();
+
+    if (teacherConflict) {
+      throw new Error(
+        "This teacher is already assigned to another schedule at the selected day and time.",
+      );
+    }
+
+    // 10. Check room conflict within the same school year
+    const roomConflict = await trx
+      .selectFrom("schedules as sc")
+      .innerJoin("sections as sec", "sec.section_id", "sc.section_id")
+      .innerJoin(
+        "schoolyears_gradelevels as sygl",
+        "sygl.sy_grade_level_id",
+        "sec.sy_grade_level_id",
+      )
+      .select("sc.schedule_id")
+      .where("sc.room_id", "=", data.room_id)
+      .where("sc.day_id", "=", data.day_id)
+      .where("sc.sched_time_id", "=", data.sched_time_id)
+      .where("sygl.school_year_id", "=", section.school_year_id)
+      .where("sc.schedule_id", "!=", schedule_id)
+      .executeTakeFirst();
+
+    if (roomConflict) {
+      throw new Error(
+        "This room is already being used at the selected day and time.",
+      );
+    }
+
+    // 11. Update schedule
+    await trx
+      .updateTable("schedules")
+      .set({
+        section_id: data.section_id,
+        sched_time_id: data.sched_time_id,
+        room_id: data.room_id,
+        teacher_id: data.teacher_id,
+        subject_id: data.subject_id,
+        day_id: data.day_id,
+      })
+      .where("schedule_id", "=", schedule_id)
+      .executeTakeFirst();
+
+    // 12. Retrieve updated schedule details
+    const updatedSchedule = await getScheduleActivityDetails(trx, schedule_id);
+
+    // 13. Log activity
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Updated",
+        user_module: "Schedules",
+        description: `Updated schedule from: ${formatScheduleDescription(existingSchedule)}. New schedule: ${formatScheduleDescription(updatedSchedule)}.`,
+      },
+      trx,
+    );
+
+    return {
+      schedule_id: Number(schedule_id),
+    };
+  });
+};
+
+export const deleteSchedule = async (schedule_id, user_id) => {
+  return await db.transaction().execute(async (trx) => {
+    // 1. Retrieve schedule details before deletion
+    const schedule = await getScheduleActivityDetails(trx, schedule_id);
+
+    // 2. Delete schedule
+    const result = await trx
+      .deleteFrom("schedules")
+      .where("schedule_id", "=", schedule_id)
+      .executeTakeFirst();
+
+    if (Number(result.numDeletedRows) !== 1) {
+      throw new Error("Schedule not found.");
+    }
+
+    // 3. Log activity
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Deleted",
+        user_module: "Schedules",
+        description: `Deleted schedule: ${formatScheduleDescription(schedule)}.`,
+      },
+      trx,
+    );
+
+    return {
+      schedule_id: Number(schedule_id),
+    };
+  });
 };

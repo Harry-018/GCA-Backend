@@ -29,11 +29,14 @@ export const editBanner = async (req, res) => {
       bannerImage = result.secure_url;
     }
 
-    const result = await hmm.editBanner({
-      banner_title: req.body.banner_title,
-      banner_quote: req.body.banner_quote,
-      banner_image: bannerImage,
-    });
+    const result = await hmm.editBanner(
+      {
+        banner_title: req.body.banner_title,
+        banner_quote: req.body.banner_quote,
+        banner_image: bannerImage,
+      },
+      req.user.user_id,
+    );
 
     res.status(200).json(result);
   } catch (error) {
@@ -69,10 +72,13 @@ export const editVideo = async (req, res) => {
       videoUrl = result.secure_url;
     }
 
-    const video = await hmm.editVideo({
-      video_title: req.body.video_title,
-      video_url: videoUrl,
-    });
+    const video = await hmm.editVideo(
+      {
+        video_title: req.body.video_title,
+        video_url: videoUrl,
+      },
+      req.user.user_id,
+    );
 
     res.status(200).json({
       message: "Video updated successfully",
@@ -105,7 +111,7 @@ export const getReasons = async (req, res) => {
 
 export const addReason = async (req, res) => {
   try {
-    const reason = await hmm.addReason(req.body);
+    const reason = await hmm.addReason(req.body, req.user.user_id);
 
     res.status(201).json({
       message: "Reason added successfully",
@@ -123,7 +129,11 @@ export const editReason = async (req, res) => {
   try {
     const { reason_id } = req.params;
 
-    const reason = await hmm.editReason(Number(reason_id), req.body);
+    const reason = await hmm.editReason(
+      Number(reason_id),
+      req.body,
+      req.user.user_id,
+    );
 
     res.status(200).json({
       message: "Reason updated successfully",
@@ -141,7 +151,10 @@ export const deleteReason = async (req, res) => {
   try {
     const { reason_id } = req.params;
 
-    const reason = await hmm.deleteReason(Number(reason_id));
+    const reason = await hmm.deleteReason(
+      Number(reason_id),
+      req.user.user_id,
+    );
 
     res.status(200).json({
       message: "Reason deleted successfully",
@@ -196,13 +209,16 @@ export const addAcademicProgram = async (req, res) => {
       imageUrl = result.secure_url;
     }
 
-    const result = await hmm.addAcademicPrograms({
-      grade_level_id: req.body.grade_level_id,
-      image_url: imageUrl,
-      min_age: req.body.min_age,
-      max_age: req.body.max_age,
-      description: req.body.description,
-    });
+    const result = await hmm.addAcademicPrograms(
+      {
+        grade_level_id: req.body.grade_level_id,
+        image_url: imageUrl,
+        min_age: req.body.min_age,
+        max_age: req.body.max_age,
+        description: req.body.description,
+      },
+      req.user.user_id,
+    );
 
     res.status(201).json(result);
   } catch (error) {
@@ -227,13 +243,17 @@ export const editAcademicProgram = async (req, res) => {
       imageUrl = result.secure_url;
     }
 
-    const result = await hmm.editAcademicPrograms(req.params.program_id, {
-      grade_level_id: req.body.grade_level_id,
-      image_url: imageUrl,
-      min_age: req.body.min_age,
-      max_age: req.body.max_age,
-      description: req.body.description,
-    });
+    const result = await hmm.editAcademicPrograms(
+      req.params.program_id,
+      {
+        grade_level_id: req.body.grade_level_id,
+        image_url: imageUrl,
+        min_age: req.body.min_age,
+        max_age: req.body.max_age,
+        description: req.body.description,
+      },
+      req.user.user_id,
+    );
 
     res.status(200).json(result);
   } catch (error) {
@@ -247,7 +267,10 @@ export const editAcademicProgram = async (req, res) => {
 
 export const deleteAcademicProgram = async (req, res) => {
   try {
-    const result = await hmm.deleteAcademicProgram(req.params.program_id);
+    const result = await hmm.deleteAcademicProgram(
+      req.params.program_id,
+      req.user.user_id,
+    );
 
     res.status(200).json(result);
   } catch (error) {
@@ -276,7 +299,10 @@ export const getMissionVision = async (req, res) => {
 
 export const editMissionVision = async (req, res) => {
   try {
-    const missionVision = await hmm.editMissionVision(req.body);
+    const missionVision = await hmm.editMissionVision(
+      req.body,
+      req.user.user_id,
+    );
 
     res.status(200).json({
       message: "Mission and vision updated successfully",
@@ -318,11 +344,14 @@ export const addChildrenActivity = async (req, res) => {
       activityImage = result.secure_url;
     }
 
-    const result = await hmm.addChildrenActivity({
-      activity_title: req.body.activity_title,
-      activity_description: req.body.activity_description,
-      activity_image: activityImage,
-    });
+    const result = await hmm.addChildrenActivity(
+      {
+        activity_title: req.body.activity_title,
+        activity_description: req.body.activity_description,
+        activity_image: activityImage,
+      },
+      req.user.user_id,
+    );
 
     res.status(201).json(result);
   } catch (error) {
@@ -347,11 +376,15 @@ export const editChildrenActivity = async (req, res) => {
       activityImage = result.secure_url;
     }
 
-    const result = await hmm.editChildrenActivity(req.params.activity_id, {
-      activity_title: req.body.activity_title,
-      activity_description: req.body.activity_description,
-      activityImage: activityImage,
-    });
+    const result = await hmm.editChildrenActivity(
+      req.params.activity_id,
+      {
+        activity_title: req.body.activity_title,
+        activity_description: req.body.activity_description,
+        activityImage: activityImage,
+      },
+      req.user.user_id,
+    );
 
     res.status(200).json(result);
   } catch (error) {
@@ -367,7 +400,10 @@ export const deleteChildrenActivity = async (req, res) => {
   try {
     const { activity_id } = req.params;
 
-    const activity = await hmm.deleteChildrenActivity(Number(activity_id));
+    const activity = await hmm.deleteChildrenActivity(
+      Number(activity_id),
+      req.user.user_id,
+    );
 
     res.status(200).json({
       message: "Children activity deleted successfully",

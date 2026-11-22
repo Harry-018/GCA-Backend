@@ -11,7 +11,10 @@ export const createRegistrationInvitation = async (req, res) => {
       });
     }
 
-    const invitation = await trm.createRegistrationInvitation(email);
+    const invitation = await trm.createRegistrationInvitation(
+      email,
+      req.user.user_id,
+    );
 
     await sendTeacherRegistrationEmail({
       email: invitation.email,

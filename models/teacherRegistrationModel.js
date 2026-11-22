@@ -1,8 +1,9 @@
 import crypto from "crypto";
 import db from "../config/db.js";
 import { teacherNo } from "../functions/NumberGenerator.js";
+import { logAdminActivity } from "./activityLogsModel.js";
 
-export const createRegistrationInvitation = async (email) => {
+export const createRegistrationInvitation = async (email, user_id) => {
   const token = crypto.randomBytes(32).toString("hex");
 
   const token_hash = crypto.createHash("sha256").update(token).digest("hex");
@@ -18,6 +19,13 @@ export const createRegistrationInvitation = async (email) => {
       created_at: new Date(),
     })
     .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Created",
+    user_module: "Teachers",
+    description: `Created teacher registration invitation for ${email}.`,
+  });
 
   return {
     registration_id: Number(result.insertId),

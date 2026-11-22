@@ -1,11 +1,12 @@
 import db from "../config/db.js";
+import { logAdminActivity } from "./activityLogsModel.js";
 
 // payment option
 export const getPaymentOptions = async () => {
   return await db.selectFrom("payment_option").selectAll().execute();
 };
 
-export const editPaymentOption = async (payment_option_id, data) => {
+export const editPaymentOption = async (payment_option_id, data, user_id) => {
   const result = await db
     .updateTable("payment_option")
     .set({
@@ -18,6 +19,13 @@ export const editPaymentOption = async (payment_option_id, data) => {
   if (Number(result.numUpdatedRows) === 0) {
     throw new Error("Payment option not found");
   }
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Payment Options",
+    description: `Updated payment option "${data.option_name}".`,
+  });
 
   return { payment_option_id: Number(payment_option_id) };
 };
@@ -71,7 +79,7 @@ export const getPaymentOptionsInGradeLevels = async (grade_level_id) => {
     .execute();
 };
 
-export const addFeesPaymentInGradeLevel = async (data) => {
+export const addFeesPaymentInGradeLevel = async (data, user_id) => {
   return await db.transaction().execute(async (trx) => {
     const selectActiveSY = await trx
       .selectFrom("school_years")
@@ -121,6 +129,22 @@ export const addFeesPaymentInGradeLevel = async (data) => {
       .values(rows)
       .execute();
 
+    const gradeLevel = await trx
+      .selectFrom("grade_levels")
+      .select("grade_level_name")
+      .where("grade_level_id", "=", data.grade_level_id)
+      .executeTakeFirst();
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Created",
+        user_module: "Tuition",
+        description: `Created fees for grade level "${gradeLevel?.grade_level_name || "the selected grade level"}".`,
+      },
+      trx,
+    );
+
     return {
       fees_id: fee_id,
       grade_level_id: data.grade_level_id,
@@ -129,7 +153,7 @@ export const addFeesPaymentInGradeLevel = async (data) => {
   });
 };
 
-export const editGradeLevelFees = async (grade_level_id, data) => {
+export const editGradeLevelFees = async (grade_level_id, data, user_id) => {
   return await db.transaction().execute(async (trx) => {
     const selectActiveSY = await trx
       .selectFrom("school_years")
@@ -169,10 +193,26 @@ export const editGradeLevelFees = async (grade_level_id, data) => {
     if (Number(updateFees.numUpdatedRows) === 0) {
       throw new Error("Fee record not found or nothing changed");
     }
+
+    const gradeLevel = await trx
+      .selectFrom("grade_levels")
+      .select("grade_level_name")
+      .where("grade_level_id", "=", grade_level_id)
+      .executeTakeFirst();
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Updated",
+        user_module: "Tuition",
+        description: `Updated fees for grade level "${gradeLevel?.grade_level_name || "the selected grade level"}".`,
+      },
+      trx,
+    );
   });
 };
 
-export const deleteGradeLevelFees = async (grade_level_id) => {
+export const deleteGradeLevelFees = async (grade_level_id, user_id) => {
   return await db.transaction().execute(async (trx) => {
     const selectActiveSY = await trx
       .selectFrom("school_years")
@@ -208,6 +248,22 @@ export const deleteGradeLevelFees = async (grade_level_id) => {
       .deleteFrom("fees")
       .where("fees_id", "=", existing.fees_id)
       .execute();
+
+    const gradeLevel = await trx
+      .selectFrom("grade_levels")
+      .select("grade_level_name")
+      .where("grade_level_id", "=", grade_level_id)
+      .executeTakeFirst();
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Deleted",
+        user_module: "Tuition",
+        description: `Deleted fees for grade level "${gradeLevel?.grade_level_name || "the selected grade level"}".`,
+      },
+      trx,
+    );
 
     return {
       grade_level_id: Number(grade_level_id),

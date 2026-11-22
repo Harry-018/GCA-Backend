@@ -166,6 +166,7 @@ export const createSchedule = async (req, res) => {
       subject_id,
       day_id,
     } = req.body;
+
     if (
       !section_id ||
       !sched_time_id ||
@@ -178,19 +179,25 @@ export const createSchedule = async (req, res) => {
         .status(400)
         .json({ message: "All schedule fields are required." });
     }
-    const result = await schedm.createSchedule({
-      section_id: Number(section_id),
-      sched_time_id: Number(sched_time_id),
-      room_id: Number(room_id),
-      teacher_id: Number(teacher_id),
-      subject_id: Number(subject_id),
-      day_id: Number(day_id),
-    });
+
+    const result = await schedm.createSchedule(
+      {
+        section_id: Number(section_id),
+        sched_time_id: Number(sched_time_id),
+        room_id: Number(room_id),
+        teacher_id: Number(teacher_id),
+        subject_id: Number(subject_id),
+        day_id: Number(day_id),
+      },
+      req.user.user_id,
+    );
+
     res
       .status(201)
       .json({ message: "Schedule created successfully.", data: result });
   } catch (error) {
     console.error("Failed to create schedule:", error);
+
     res
       .status(500)
       .json({ message: "Failed to create schedule.", error: error.message });
@@ -201,9 +208,11 @@ export const editSchedule = async (req, res) => {
   try {
     const { schedule_id } = req.params;
     const id = Number(schedule_id);
+
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ message: "Invalid schedule ID." });
     }
+
     const {
       section_id,
       sched_time_id,
@@ -212,6 +221,7 @@ export const editSchedule = async (req, res) => {
       subject_id,
       day_id,
     } = req.body;
+
     if (
       !section_id ||
       !sched_time_id ||
@@ -224,19 +234,26 @@ export const editSchedule = async (req, res) => {
         .status(400)
         .json({ message: "All schedule fields are required." });
     }
-    const result = await schedm.editSchedule(id, {
-      section_id: Number(section_id),
-      sched_time_id: Number(sched_time_id),
-      room_id: Number(room_id),
-      teacher_id: Number(teacher_id),
-      subject_id: Number(subject_id),
-      day_id: Number(day_id),
-    });
+
+    const result = await schedm.editSchedule(
+      id,
+      {
+        section_id: Number(section_id),
+        sched_time_id: Number(sched_time_id),
+        room_id: Number(room_id),
+        teacher_id: Number(teacher_id),
+        subject_id: Number(subject_id),
+        day_id: Number(day_id),
+      },
+      req.user.user_id,
+    );
+
     res
       .status(200)
       .json({ message: "Schedule updated successfully.", data: result });
   } catch (error) {
     console.error("Failed to edit schedule:", error);
+
     res
       .status(500)
       .json({ message: "Failed to edit schedule.", error: error.message });
@@ -247,15 +264,19 @@ export const deleteSchedule = async (req, res) => {
   try {
     const { schedule_id } = req.params;
     const id = Number(schedule_id);
+
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ message: "Invalid schedule ID." });
     }
-    const result = await schedm.deleteSchedule(id);
+
+    const result = await schedm.deleteSchedule(id, req.user.user_id);
+
     res
       .status(200)
       .json({ message: "Schedule deleted successfully.", data: result });
   } catch (error) {
     console.error("Failed to delete schedule:", error);
+
     res
       .status(500)
       .json({ message: "Failed to delete schedule.", error: error.message });

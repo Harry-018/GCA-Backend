@@ -48,7 +48,10 @@ export const inviteAccount = async (req, res) => {
       });
     }
 
-    const result = await uam.createAccountInvitation(Number(user_id));
+    const result = await uam.createAccountInvitation(
+      Number(user_id),
+      req.user.user_id,
+    );
 
     await sendAccountActivationEmail({
       email: result.user.email,
@@ -74,7 +77,11 @@ export const disableAccount = async (req, res) => {
     const { user_id } = req.params;
     const { reason } = req.body;
 
-    const result = await uam.disableAccount(Number(user_id), reason);
+    const result = await uam.disableAccount(
+      Number(user_id),
+      reason,
+      req.user.user_id,
+    );
 
     // Send account disabled notification
     try {
@@ -105,7 +112,10 @@ export const reactivateAccount = async (req, res) => {
   try {
     const { user_id } = req.params;
 
-    const result = await uam.reactivateAccount(Number(user_id));
+    const result = await uam.reactivateAccount(
+      Number(user_id),
+      req.user.user_id,
+    );
 
     res.status(200).json({
       success: true,

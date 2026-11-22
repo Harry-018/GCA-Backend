@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import { logAdminActivity } from "./activityLogsModel.js";
 
 //============ banner
 
@@ -32,7 +33,7 @@ export const getBanner = async () => {
   };
 };
 
-export const editBanner = async (data) => {
+export const editBanner = async (data, user_id) => {
   const updateData = {
     banner_title: data.banner_title,
     banner_quote: data.banner_quote,
@@ -48,6 +49,13 @@ export const editBanner = async (data) => {
     .where("banner_id", "=", 1)
     .execute();
 
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Homepage",
+    description: "Updated banner.",
+  });
+
   return {
     message: "Banner updated successfully",
   };
@@ -60,7 +68,7 @@ export const getVideo = async () => {
   return video;
 };
 
-export const editVideo = async (data) => {
+export const editVideo = async (data, user_id) => {
   const updateData = {
     video_title: data.video_title,
   };
@@ -74,6 +82,13 @@ export const editVideo = async (data) => {
     .set(updateData)
     .where("video_id", "=", 1)
     .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Homepage",
+    description: "Updated home video.",
+  });
 
   return {
     message: "Video updated successfully",
@@ -92,7 +107,7 @@ export const getReasons = async () => {
   return reasons;
 };
 
-export const addReason = async (data) => {
+export const addReason = async (data, user_id) => {
   await db
     .insertInto("choose_us")
     .values({
@@ -100,9 +115,16 @@ export const addReason = async (data) => {
     })
     .execute();
 
+  await logAdminActivity({
+    user_id,
+    user_action: "Created",
+    user_module: "Homepage",
+    description: `Created reason "${data.reasons}".`,
+  });
+
   return true;
 };
-export const editReason = async (reason_id, data) => {
+export const editReason = async (reason_id, data, user_id) => {
   await db
     .updateTable("choose_us")
     .set({
@@ -111,14 +133,34 @@ export const editReason = async (reason_id, data) => {
     .where("reason_id", "=", reason_id)
     .executeTakeFirst();
 
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Homepage",
+    description: `Updated reason "${data.reasons}".`,
+  });
+
   return true;
 };
 
-export const deleteReason = async (reason_id) => {
+export const deleteReason = async (reason_id, user_id) => {
+  const reason = await db
+    .selectFrom("choose_us")
+    .select("reasons")
+    .where("reason_id", "=", reason_id)
+    .executeTakeFirst();
+
   await db
     .deleteFrom("choose_us")
     .where("reason_id", "=", reason_id)
     .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Deleted",
+    user_module: "Homepage",
+    description: `Deleted reason "${reason?.reasons ?? "reason"}".`,
+  });
 
   return true;
 };
@@ -148,7 +190,7 @@ export const getGradeLevels = async () => {
   return gradeLevel;
 };
 
-export const addAcademicPrograms = async (data) => {
+export const addAcademicPrograms = async (data, user_id) => {
   await db
     .insertInto("academic_programs")
     .values({
@@ -160,12 +202,25 @@ export const addAcademicPrograms = async (data) => {
     })
     .execute();
 
+  const gradeLevel = await db
+    .selectFrom("grade_levels")
+    .select("grade_level_name")
+    .where("grade_level_id", "=", data.grade_level_id)
+    .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Created",
+    user_module: "Homepage",
+    description: `Created academic program for ${gradeLevel?.grade_level_name ?? "grade level"}.`,
+  });
+
   return {
     message: "Academic program added successfully",
   };
 };
 
-export const editAcademicPrograms = async (program_id, data) => {
+export const editAcademicPrograms = async (program_id, data, user_id) => {
   const updateData = {
     grade_level_id: data.grade_level_id,
     min_age: data.min_age,
@@ -183,16 +238,43 @@ export const editAcademicPrograms = async (program_id, data) => {
     .where("program_id", "=", program_id)
     .execute();
 
+  const gradeLevel = await db
+    .selectFrom("grade_levels")
+    .select("grade_level_name")
+    .where("grade_level_id", "=", data.grade_level_id)
+    .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Homepage",
+    description: `Updated academic program for ${gradeLevel?.grade_level_name ?? "grade level"}.`,
+  });
+
   return {
     message: "Academic program updated successfully",
   };
 };
 
-export const deleteAcademicProgram = async (program_id) => {
+export const deleteAcademicProgram = async (program_id, user_id) => {
+  const program = await db
+    .selectFrom("academic_programs as ap")
+    .innerJoin("grade_levels as gl", "gl.grade_level_id", "ap.grade_level_id")
+    .select("gl.grade_level_name")
+    .where("ap.program_id", "=", program_id)
+    .executeTakeFirst();
+
   await db
     .deleteFrom("academic_programs")
     .where("program_id", "=", program_id)
     .execute();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Deleted",
+    user_module: "Homepage",
+    description: `Deleted academic program for ${program?.grade_level_name ?? "grade level"}.`,
+  });
 
   return {
     message: "Academic program deleted successfully",
@@ -206,7 +288,7 @@ export const getMissionVision = async () => {
   return missvis;
 };
 
-export const editMissionVision = async (data) => {
+export const editMissionVision = async (data, user_id) => {
   await db
     .updateTable("mission_vision")
     .set({
@@ -217,6 +299,14 @@ export const editMissionVision = async (data) => {
     })
     .where("mission_vision_id", "=", 1)
     .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Homepage",
+    description: "Updated mission and vision.",
+  });
+
   return {
     message: "mission and vision updated successfully",
   };
@@ -233,7 +323,7 @@ export const getChildrenActivities = async () => {
   };
 };
 
-export const addChildrenActivity = async (data) => {
+export const addChildrenActivity = async (data, user_id) => {
   await db
     .insertInto("children_activities")
     .values({
@@ -243,12 +333,19 @@ export const addChildrenActivity = async (data) => {
     })
     .execute();
 
+  await logAdminActivity({
+    user_id,
+    user_action: "Created",
+    user_module: "Homepage",
+    description: `Created children activity "${data.activity_title}".`,
+  });
+
   return {
     message: "Activity added successfully",
   };
 };
 
-export const editChildrenActivity = async (activity_id, data) => {
+export const editChildrenActivity = async (activity_id, data, user_id) => {
   const updateActivity = {
     activity_title: data.activity_title,
     activity_description: data.activity_description,
@@ -265,16 +362,36 @@ export const editChildrenActivity = async (activity_id, data) => {
     .where("activity_id", "=", activity_id)
     .execute();
 
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Homepage",
+    description: `Updated children activity "${data.activity_title}".`,
+  });
+
   return {
     message: "Activity updated successfully",
   };
 };
 
-export const deleteChildrenActivity = async (activity_id) => {
+export const deleteChildrenActivity = async (activity_id, user_id) => {
+  const activity = await db
+    .selectFrom("children_activities")
+    .select("activity_title")
+    .where("activity_id", "=", activity_id)
+    .executeTakeFirst();
+
   await db
     .deleteFrom("children_activities")
     .where("activity_id", "=", activity_id)
     .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Deleted",
+    user_module: "Homepage",
+    description: `Deleted children activity "${activity?.activity_title ?? "activity"}".`,
+  });
 
   return true;
 };

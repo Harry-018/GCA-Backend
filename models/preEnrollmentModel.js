@@ -739,7 +739,7 @@ export const getApprovedApplicants = async (
   };
 };
 
-export const enrollApplicant = async (data, user_id) => {
+export const enrollApplicant = async (data, admin_user_id) => {
   return await db.transaction().execute(async (trx) => {
     // 1. Check approved application
     const approval = await trx
@@ -758,6 +758,7 @@ export const enrollApplicant = async (data, user_id) => {
       .selectFrom("applications")
       .select([
         "application_id",
+        "application_no",
         "applicant_info_id",
         "school_year_id",
         "grade_level_id",
@@ -945,10 +946,10 @@ export const enrollApplicant = async (data, user_id) => {
 
     await logAdminActivity(
       {
-        user_id,
+        user_id: admin_user_id,
         user_action: "Created",
         user_module: "Students",
-        description: `Enrolled new student ${stu_num} (Student ID: ${stu_id}) from Application ${approval.application_id}.`,
+        description: `Enrolled new student ${stu_num} from Application ${application.application_no}.`,
       },
       trx,
     );
@@ -975,12 +976,19 @@ export const rejectApprovedApplicant = async (data, user_id) => {
 
     const submission_id = Number(result.insertId);
 
+    const application = await trx
+      .selectFrom("app_approval as aa")
+      .innerJoin("applications as a", "a.application_id", "aa.application_id")
+      .select("a.application_no")
+      .where("aa.app_approval_id", "=", data.app_approval_id)
+      .executeTakeFirst();
+
     await logAdminActivity(
       {
         user_id,
         user_action: "Rejected",
         user_module: "Applications",
-        description: `Rejected applicant submission for Application Approval #${data.app_approval_id}.`,
+        description: `Rejected applicant submission for Application ${application?.application_no ?? "N/A"}.`,
       },
       trx,
     );
@@ -1009,12 +1017,19 @@ export const rescheduleApprovedApplicant = async (data, user_id) => {
       throw new Error("Approved application does not exist.");
     }
 
+    const application = await trx
+      .selectFrom("app_approval as aa")
+      .innerJoin("applications as a", "a.application_id", "aa.application_id")
+      .select("a.application_no")
+      .where("aa.app_approval_id", "=", data.app_approval_id)
+      .executeTakeFirst();
+
     await logAdminActivity(
       {
         user_id,
         user_action: "Updated",
         user_module: "Applications",
-        description: `Rescheduled applicant appointment for Application Approval #${data.app_approval_id}.`,
+        description: `Rescheduled applicant appointment for Application ${application?.application_no ?? "N/A"}.`,
       },
       trx,
     );

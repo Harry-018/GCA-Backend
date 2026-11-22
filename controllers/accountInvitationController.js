@@ -11,7 +11,10 @@ export const createAccountInvitation = async (req, res) => {
       });
     }
 
-    const invitation = await aim.createAccountInvitation(Number(user_id));
+    const invitation = await aim.createAccountInvitation(
+      Number(user_id),
+      req.user.user_id,
+    );
 
     try {
       await sendAccountActivationEmail({

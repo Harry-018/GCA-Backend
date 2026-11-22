@@ -143,7 +143,7 @@ export const markInquiryAsRead = async (req, res) => {
       });
     }
 
-    const result = await gim.markInquiryAsRead(inquire_id);
+    const result = await gim.markInquiryAsRead(inquire_id, req.user.user_id);
 
     return res.status(200).json({
       success: true,

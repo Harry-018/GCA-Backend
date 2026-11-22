@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import { sql } from "kysely";
+import { logAdminActivity } from "./activityLogsModel.js";
 
 const buildParentQuery = () => {
   return db
@@ -134,7 +135,7 @@ export const getParentInfoByUserId = async (user_id) => {
 export const editParentInfo = async (user_id, data) => {
   const { contact_number, email } = data;
 
-  return await db
+  const result = await db
     .updateTable("parent_info")
     .set({
       contact_number,
@@ -142,6 +143,21 @@ export const editParentInfo = async (user_id, data) => {
     })
     .where("user_id", "=", Number(user_id))
     .executeTakeFirst();
+
+  const parent = await db
+    .selectFrom("parent_info")
+    .select("email")
+    .where("user_id", "=", Number(user_id))
+    .executeTakeFirst();
+
+  await logAdminActivity({
+    user_id,
+    user_action: "Updated",
+    user_module: "Parents",
+    description: `Updated parent information for ${parent?.email ?? email}.`,
+  });
+
+  return result;
 };
 
 // from here on out. not tested yet
@@ -684,6 +700,3 @@ export const getStudentTeacherRemarks = async (user_id, stu_id, quarter_id) => {
       : null,
   };
 };
-
-const r = await getStudentSubjects(240003, 330001);
-console.log("students", r);
