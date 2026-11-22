@@ -10,7 +10,7 @@ import {
 } from "@react-email/components";
 const TuitionReminderEmail = ({
   parentName,
-  paymentOption,
+
   templateSubject,
   templateBody,
 }) => {
@@ -80,30 +80,14 @@ const TuitionReminderEmail = ({
           templateBody,
         ),
 
-        React.createElement(
-          Section,
-          {
-            style: {
-              margin: "24px 0",
-              padding: "20px",
-              backgroundColor: "#f5f6ff",
-              borderRadius: "10px",
-            },
+        React.createElement(Section, {
+          style: {
+            margin: "24px 0",
+            padding: "20px",
+            backgroundColor: "#f5f6ff",
+            borderRadius: "10px",
           },
-
-          React.createElement(
-            Text,
-            {
-              style: {
-                margin: "6px 0",
-                color: "#3b3b3b",
-                fontSize: "14px",
-              },
-            },
-            React.createElement("strong", null, "Payment Option: "),
-            paymentOption,
-          ),
-        ),
+        }),
 
         React.createElement(
           Text,

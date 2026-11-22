@@ -228,20 +228,6 @@ export const getNotificationTemplates = async (req, res) => {
   }
 };
 
-export const getNotificationAudiences = async (req, res) => {
-  try {
-    const audiences = await comm.getNotificationAudiences();
-
-    res.status(200).json(audiences);
-  } catch (error) {
-    console.error("Get notification audiences error:", error);
-
-    res.status(500).json({
-      message: "Failed to get notification audiences.",
-    });
-  }
-};
-
 export const getNotifications = async (req, res) => {
   try {
     const notifications = await comm.getNotifications();
@@ -314,7 +300,6 @@ export const sendNotification = async (req, res) => {
       await sendTuitionReminder({
         email: recipient.email,
         parentName: `${recipient.first_name} ${recipient.last_name}`,
-        paymentOption: recipient.option_name || "",
         templateSubject: template.subject,
         templateBody: template.body,
       });
@@ -340,5 +325,208 @@ export const sendNotification = async (req, res) => {
     res.status(500).json({
       message: error.message || "Failed to send notification.",
     });
+  }
+};
+
+// =====================
+// ERROR HANDLER
+// =====================
+
+const handleError = (res, error, defaultMessage) => {
+  console.error(defaultMessage, error);
+
+  const message = error.message || defaultMessage;
+
+  if (message.includes("not found") || message.includes("does not exist")) {
+    return res.status(404).json({
+      success: false,
+      message,
+    });
+  }
+
+  if (
+    message.includes("already exists") ||
+    message.includes("Duplicate entry")
+  ) {
+    return res.status(409).json({
+      success: false,
+      message,
+    });
+  }
+
+  return res.status(400).json({
+    success: false,
+    message,
+  });
+};
+
+// =====================
+// GET NOTIFICATION AUDIENCES
+// GET /api/notifications/audiences
+// =====================
+
+export const getNotificationAudiences = async (req, res) => {
+  try {
+    const result = await comm.getNotificationAudiences();
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    return handleError(
+      res,
+      error,
+      "Failed to retrieve notification audiences.",
+    );
+  }
+};
+
+// =====================
+// GET NOTIFICATION RECIPIENTS
+// GET /api/notifications/recipients
+// =====================
+
+export const getNotificationRecipients = async (req, res) => {
+  try {
+    const { audience, payment_option_id } = req.query;
+
+    if (!audience) {
+      return res.status(400).json({
+        success: false,
+        message: "Notification audience is required.",
+      });
+    }
+
+    if (audience === "parent" && !payment_option_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment option is required for parent recipients.",
+      });
+    }
+
+    const result = await comm.getNotificationRecipients({
+      audience,
+      payment_option_id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: result.length,
+      data: result,
+    });
+  } catch (error) {
+    return handleError(
+      res,
+      error,
+      "Failed to retrieve notification recipients.",
+    );
+  }
+};
+
+// =====================
+// GET ALL TUITION REMINDERS
+// GET /api/notifications/tuition-reminders
+// =====================
+
+export const getTuitionReminders = async (req, res) => {
+  try {
+    const result = await comm.getTuitionReminders();
+
+    return res.status(200).json({
+      success: true,
+      count: result.length,
+      data: result,
+    });
+  } catch (error) {
+    return handleError(res, error, "Failed to retrieve tuition reminders.");
+  }
+};
+
+// =====================
+// GET TUITION REMINDER BY ID
+// GET /api/notifications/tuition-reminders/:reminder_id
+// =====================
+
+export const getTuitionReminderById = async (req, res) => {
+  try {
+    const { reminder_id } = req.params;
+
+    const result = await comm.getTuitionReminderById(reminder_id);
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Tuition reminder not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    return handleError(res, error, "Failed to retrieve tuition reminder.");
+  }
+};
+
+// =====================
+// CREATE TUITION REMINDER
+// POST /api/notifications/tuition-reminders
+// =====================
+
+export const createTuitionReminder = async (req, res) => {
+  try {
+    const result = await comm.createTuitionReminder(req.body, req.user.user_id);
+
+    return res.status(201).json({
+      success: true,
+      message: "Tuition reminder created successfully.",
+      data: result,
+    });
+  } catch (error) {
+    return handleError(res, error, "Failed to create tuition reminder.");
+  }
+};
+
+// =====================
+// UPDATE TUITION REMINDER
+// PUT /api/notifications/tuition-reminders/:reminder_id
+// =====================
+
+export const updateTuitionReminder = async (req, res) => {
+  try {
+    const { reminder_id } = req.params;
+
+    const result = await comm.updateTuitionReminder(reminder_id, req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: "Tuition reminder updated successfully.",
+      data: result,
+    });
+  } catch (error) {
+    return handleError(res, error, "Failed to update tuition reminder.");
+  }
+};
+
+// =====================
+// DELETE TUITION REMINDER
+// DELETE /api/notifications/tuition-reminders/:reminder_id
+// =====================
+
+export const deleteTuitionReminder = async (req, res) => {
+  try {
+    const { reminder_id } = req.params;
+
+    const result = await comm.deleteTuitionReminder(reminder_id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Tuition reminder deleted successfully.",
+      data: result,
+    });
+  } catch (error) {
+    return handleError(res, error, "Failed to delete tuition reminder.");
   }
 };

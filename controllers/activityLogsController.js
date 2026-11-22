@@ -14,7 +14,11 @@ export const createAdminActivityLog = async (req, res) => {
       });
     }
 
-    if (!["Created", "Updated", "Logged In"].includes(user_action)) {
+    if (
+      !["Created", "Updated", "Deleted", "Rejected", "Logged In"].includes(
+        user_action,
+      )
+    ) {
       return res.status(400).json({
         success: false,
         message: "Invalid activity action.",

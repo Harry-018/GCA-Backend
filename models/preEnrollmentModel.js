@@ -2,6 +2,7 @@ import { sql } from "kysely";
 import db from "../config/db.js";
 import * as ng from "../functions/NumberGenerator.js";
 import { getVerification } from "./emailVerificationModel.js";
+import { logAdminActivity } from "./activityLogsModel.js";
 
 // Old clients may still submit PSGC codes instead of place names.
 const PSGC_ADDRESS_NAMES = {
@@ -432,7 +433,7 @@ export const getApplicationById = async (application_id) => {
   };
 };
 
-export const approveApplicant = async (data) => {
+export const approveApplicant = async (data, user_id) => {
   return await db.transaction().execute(async (trx) => {
     const application = await trx
       .selectFrom("applications as a")
@@ -478,6 +479,16 @@ export const approveApplicant = async (data) => {
       })
       .executeTakeFirst();
 
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Created",
+        user_module: "Applications",
+        description: `Approved Student Application ${application.application_no}`,
+      },
+      trx,
+    );
+
     return {
       application_id: application.application_id,
       application_no: application.application_no,
@@ -490,7 +501,7 @@ export const approveApplicant = async (data) => {
   });
 };
 
-export const bulkApproveApplicants = async (data) => {
+export const bulkApproveApplicants = async (data, user_id) => {
   return await db.transaction().execute(async (trx) => {
     const applications = await trx
       .selectFrom("applications as a")
@@ -537,6 +548,18 @@ export const bulkApproveApplicants = async (data) => {
 
     await trx.insertInto("app_approval").values(approvals).execute();
 
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Created",
+        user_module: "Applications",
+        description: `Bulk approved ${applications.length} student applications: ${applications
+          .map((application) => application.application_no)
+          .join(", ")}.`,
+      },
+      trx,
+    );
+
     return {
       applications: applications.map((application) => ({
         application_id: application.application_id,
@@ -559,21 +582,44 @@ export const getRejectionReasons = async () => {
     .execute();
 };
 
-export const rejectApplicant = async (data) => {
-  const result = await db
-    .updateTable("applications")
-    .set({
-      application_status: "rejected",
-      rejection_reason_id: data.rejection_reason_id,
-      rejected_at: new Date(),
-    })
-    .where("application_id", "=", data.application_id)
-    .where("application_status", "=", "pending")
-    .executeTakeFirst();
-  if (Number(result.numUpdatedRows) !== 1) {
-    throw new Error("Application does not exist or is not pending.");
-  }
-  return { application_id: data.application_id };
+export const rejectApplicant = async (data, user_id) => {
+  return await db.transaction().execute(async (trx) => {
+    const application = await trx
+      .selectFrom("applications")
+      .select(["application_id", "application_no"])
+      .where("application_id", "=", data.application_id)
+      .where("application_status", "=", "pending")
+      .executeTakeFirst();
+
+    if (!application) {
+      throw new Error("Application does not exist or is not pending.");
+    }
+
+    await trx
+      .updateTable("applications")
+      .set({
+        application_status: "rejected",
+        rejection_reason_id: data.rejection_reason_id,
+        rejected_at: new Date(),
+      })
+      .where("application_id", "=", data.application_id)
+      .where("application_status", "=", "pending")
+      .executeTakeFirst();
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Rejected",
+        user_module: "Applications",
+        description: `Rejected Student Application ${application.application_no}.`,
+      },
+      trx,
+    );
+
+    return {
+      application_id: application.application_id,
+    };
+  });
 };
 
 export const getApprovedApplicants = async (
@@ -693,7 +739,7 @@ export const getApprovedApplicants = async (
   };
 };
 
-export const enrollApplicant = async (data) => {
+export const enrollApplicant = async (data, user_id) => {
   return await db.transaction().execute(async (trx) => {
     // 1. Check approved application
     const approval = await trx
@@ -764,11 +810,13 @@ export const enrollApplicant = async (data) => {
     const submission_id = Number(insertSubmission.insertId);
 
     // 6. Create official student
+    const stu_num = await ng.studentNo(trx);
+
     const officialStudent = await trx
       .insertInto("students")
       .values({
         submission_id,
-        stu_num: await ng.studentNo(trx),
+        stu_num,
         lrn: null,
         current_grade_level_id: application.grade_level_id,
         stu_status: "active",
@@ -895,6 +943,16 @@ export const enrollApplicant = async (data) => {
         .execute();
     }
 
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Created",
+        user_module: "Students",
+        description: `Enrolled new student ${stu_num} (Student ID: ${stu_id}) from Application ${approval.application_id}.`,
+      },
+      trx,
+    );
+
     return {
       submission_id,
       student_id: stu_id,
@@ -904,42 +962,68 @@ export const enrollApplicant = async (data) => {
   });
 };
 
-export const rejectApprovedApplicant = async (data) => {
-  const result = await db
-    .insertInto("submissions")
-    .values({
-      app_approval_id: data.app_approval_id,
-      sub_status: "rejected",
-      rejection_reason_id: data.rejection_reason_id,
-    })
-    .executeTakeFirst();
+export const rejectApprovedApplicant = async (data, user_id) => {
+  return await db.transaction().execute(async (trx) => {
+    const result = await trx
+      .insertInto("submissions")
+      .values({
+        app_approval_id: data.app_approval_id,
+        sub_status: "rejected",
+        rejection_reason_id: data.rejection_reason_id,
+      })
+      .executeTakeFirst();
 
-  return {
-    submission_id: Number(result.insertId),
-    app_approval_id: data.app_approval_id,
-  };
+    const submission_id = Number(result.insertId);
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Rejected",
+        user_module: "Applications",
+        description: `Rejected applicant submission for Application Approval #${data.app_approval_id}.`,
+      },
+      trx,
+    );
+
+    return {
+      submission_id,
+      app_approval_id: data.app_approval_id,
+    };
+  });
 };
 
-export const rescheduleApprovedApplicant = async (data) => {
-  const result = await db
-    .updateTable("app_approval")
-    .set({
+export const rescheduleApprovedApplicant = async (data, user_id) => {
+  return await db.transaction().execute(async (trx) => {
+    const result = await trx
+      .updateTable("app_approval")
+      .set({
+        sub_date: data.sub_date,
+        from_time: data.from_time,
+        to_time: data.to_time,
+      })
+      .where("app_approval_id", "=", data.app_approval_id)
+      .where("approval_status", "=", "approved")
+      .executeTakeFirst();
+
+    if (Number(result.numUpdatedRows) !== 1) {
+      throw new Error("Approved application does not exist.");
+    }
+
+    await logAdminActivity(
+      {
+        user_id,
+        user_action: "Updated",
+        user_module: "Applications",
+        description: `Rescheduled applicant appointment for Application Approval #${data.app_approval_id}.`,
+      },
+      trx,
+    );
+
+    return {
+      app_approval_id: data.app_approval_id,
       sub_date: data.sub_date,
       from_time: data.from_time,
       to_time: data.to_time,
-    })
-    .where("app_approval_id", "=", data.app_approval_id)
-    .where("approval_status", "=", "approved")
-    .executeTakeFirst();
-
-  if (Number(result.numUpdatedRows) !== 1) {
-    throw new Error("Approved application does not exist.");
-  }
-
-  return {
-    app_approval_id: data.app_approval_id,
-    sub_date: data.sub_date,
-    from_time: data.from_time,
-    to_time: data.to_time,
-  };
+    };
+  });
 };

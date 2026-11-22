@@ -102,7 +102,6 @@ export const sendAccountActivationEmail = async ({ email, token }) => {
 export const sendTuitionReminder = async ({
   email,
   parentName,
-  paymentOption,
   templateSubject,
   templateBody,
 }) => {
@@ -113,14 +112,13 @@ export const sendTuitionReminder = async ({
   const html = await render(
     React.createElement(TuitionReminderEmail, {
       parentName,
-      paymentOption,
       templateSubject,
       templateBody,
     }),
   );
 
   await brevo.transactionalEmails.sendTransacEmail({
-    subject: `${templateSubject} - ${paymentOption}`,
+    subject: templateSubject,
     htmlContent: html,
     sender,
     to: [{ email }],

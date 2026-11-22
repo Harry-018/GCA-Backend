@@ -45,6 +45,56 @@ router.post(
 );
 
 // =====================
+// TUITION REMINDERS
+// =====================
+
+router.get(
+  "/tuition-reminders",
+  authenticate,
+  authorize("admin"),
+  comc.getTuitionReminders,
+);
+
+router.get(
+  "/tuition-reminders/:reminder_id",
+  authenticate,
+  authorize("admin"),
+  comc.getTuitionReminderById,
+);
+
+router.post(
+  "/tuition-reminders",
+  authenticate,
+  authorize("admin"),
+  comc.createTuitionReminder,
+);
+
+router.put(
+  "/tuition-reminders/:reminder_id",
+  authenticate,
+  authorize("admin"),
+  comc.updateTuitionReminder,
+);
+
+router.delete(
+  "/tuition-reminders/:reminder_id",
+  authenticate,
+  authorize("admin"),
+  comc.deleteTuitionReminder,
+);
+
+// =====================
+// NOTIFICATION RECIPIENTS
+// =====================
+
+router.get(
+  "/recipients",
+  authenticate,
+  authorize("admin"),
+  comc.getNotificationRecipients,
+);
+
+// =====================
 // ANNOUNCEMENTS
 // =====================
 

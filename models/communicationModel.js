@@ -296,12 +296,14 @@ export const getTuitionReminderRecipients = async (payment_option_id) => {
       "pi.parent_info_id",
       "pi.first_name",
       "pi.last_name",
-      "pi.email",
+      "ua.email",
       "s.stu_id",
       "s.stu_num",
       "po.payment_option_id",
       "po.option_name",
     ])
+    .innerJoin("user_accounts as ua", "pi.user_id", "ua.user_id")
+
     .where("sy.sy_status", "=", "active")
     .where("sgl.sy_gradelevel_status", "=", "active")
     .where("e.enr_status", "=", "enrolled")
@@ -311,9 +313,11 @@ export const getTuitionReminderRecipients = async (payment_option_id) => {
     .where("a.application_status", "=", "approved")
     .where("ap.will_receive_account", "=", 1)
     .where("po.payment_option_id", "=", Number(payment_option_id))
-    .where("pi.email", "is not", null)
-    .where("pi.email", "!=", "")
     .orderBy("pi.last_name", "asc")
+    .where("ua.role", "=", "parent")
+    .where("ua.account_status", "=", "active")
+    .where("ua.email", "is not", null)
+    .where("ua.email", "!=", "")
     .execute();
 };
 
@@ -392,4 +396,191 @@ export const getNotificationAudiences = async () => {
     value,
     label: `${value.charAt(0).toUpperCase()}${value.slice(1)}s`,
   }));
+};
+
+// =====================
+// TUITION REMINDER CRUD
+// =====================
+
+const validateTuitionReminder = ({
+  payment_option_id,
+  due_month,
+  due_day,
+  days_before,
+}) => {
+  const month = Number(due_month);
+  const day = Number(due_day);
+  const offset = Number(days_before);
+  const paymentOptionId = Number(payment_option_id);
+
+  if (!Number.isInteger(paymentOptionId) || paymentOptionId < 1) {
+    throw new Error("Invalid payment option.");
+  }
+
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    throw new Error("Invalid due month.");
+  }
+
+  if (!Number.isInteger(day) || day < 1 || day > 31) {
+    throw new Error("Invalid due day.");
+  }
+
+  if (!Number.isInteger(offset) || offset < 0 || offset > 65535) {
+    throw new Error("Invalid reminder offset.");
+  }
+
+  // Use leap year 2024 so February 29 is allowed.
+  const maxDay = new Date(Date.UTC(2024, month, 0)).getUTCDate();
+
+  if (day > maxDay) {
+    throw new Error("Invalid day for the selected month.");
+  }
+
+  return {
+    payment_option_id: paymentOptionId,
+    due_month: month,
+    due_day: day,
+    days_before: offset,
+  };
+};
+
+// GET ALL REMINDERS
+export const getTuitionReminders = async () => {
+  return await db
+    .selectFrom("tuition_reminders as tr")
+    .innerJoin(
+      "payment_option as po",
+      "tr.payment_option_id",
+      "po.payment_option_id",
+    )
+    .select([
+      "tr.reminder_id",
+      "tr.payment_option_id",
+      "po.option_name",
+      "tr.due_month",
+      "tr.due_day",
+      "tr.days_before",
+      "tr.is_active",
+      "tr.created_at",
+      "tr.updated_at",
+    ])
+    .where("tr.is_active", "=", 1)
+    .orderBy("tr.payment_option_id", "asc")
+    .orderBy("tr.due_month", "asc")
+    .orderBy("tr.due_day", "asc")
+    .execute();
+};
+
+// GET REMINDER BY ID
+export const getTuitionReminderById = async (reminder_id) => {
+  return await db
+    .selectFrom("tuition_reminders as tr")
+    .innerJoin(
+      "payment_option as po",
+      "tr.payment_option_id",
+      "po.payment_option_id",
+    )
+    .select([
+      "tr.reminder_id",
+      "tr.payment_option_id",
+      "po.option_name",
+      "tr.due_month",
+      "tr.due_day",
+      "tr.days_before",
+      "tr.is_active",
+      "tr.created_at",
+      "tr.updated_at",
+    ])
+    .where("tr.reminder_id", "=", Number(reminder_id))
+    .executeTakeFirst();
+};
+
+// CREATE REMINDER
+export const createTuitionReminder = async (data, created_by) => {
+  const values = validateTuitionReminder(data);
+
+  const paymentOption = await db
+    .selectFrom("payment_option")
+    .select("payment_option_id")
+    .where("payment_option_id", "=", values.payment_option_id)
+    .executeTakeFirst();
+
+  if (!paymentOption) {
+    throw new Error("Payment option not found.");
+  }
+
+  const existing = await db
+    .selectFrom("tuition_reminders")
+    .select("reminder_id")
+    .where("payment_option_id", "=", values.payment_option_id)
+    .where("due_month", "=", values.due_month)
+    .where("due_day", "=", values.due_day)
+    .where("days_before", "=", values.days_before)
+    .where("is_active", "=", 1)
+    .executeTakeFirst();
+
+  if (existing) {
+    throw new Error("This tuition reminder already exists.");
+  }
+
+  const result = await db
+    .insertInto("tuition_reminders")
+    .values({
+      ...values,
+      created_by: created_by ? Number(created_by) : null,
+      is_active: 1,
+    })
+    .executeTakeFirst();
+
+  return await getTuitionReminderById(Number(result.insertId));
+};
+
+// UPDATE REMINDER
+export const updateTuitionReminder = async (reminder_id, data) => {
+  const id = Number(reminder_id);
+  const values = validateTuitionReminder(data);
+
+  const existing = await db
+    .selectFrom("tuition_reminders")
+    .select("reminder_id")
+    .where("reminder_id", "=", id)
+    .where("is_active", "=", 1)
+    .executeTakeFirst();
+
+  if (!existing) {
+    throw new Error("Tuition reminder not found.");
+  }
+
+  const duplicate = await db
+    .selectFrom("tuition_reminders")
+    .select("reminder_id")
+    .where("payment_option_id", "=", values.payment_option_id)
+    .where("due_month", "=", values.due_month)
+    .where("due_day", "=", values.due_day)
+    .where("days_before", "=", values.days_before)
+    .where("is_active", "=", 1)
+    .where("reminder_id", "!=", id)
+    .executeTakeFirst();
+
+  if (duplicate) {
+    throw new Error("This tuition reminder already exists.");
+  }
+
+  await db
+    .updateTable("tuition_reminders")
+    .set(values)
+    .where("reminder_id", "=", id)
+    .executeTakeFirst();
+
+  return await getTuitionReminderById(id);
+};
+
+// DELETE REMINDER (SOFT DELETE)
+export const deleteTuitionReminder = async (reminder_id) => {
+  const result = await db
+    .deleteFrom("tuition_reminders")
+    .where("reminder_id", "=", Number(reminder_id))
+    .executeTakeFirst();
+
+  return Number(result.numDeletedRows) > 0;
 };

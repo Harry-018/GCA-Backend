@@ -1,4 +1,7 @@
-import { sendAccountActivationEmail } from "../emails/emailService.js";
+import {
+  sendAccountActivationEmail,
+  sendAccountDisabledEmail,
+} from "../emails/emailService.js";
 import * as uam from "../models/userAccountsModel.js";
 
 export const getUserAccounts = async (req, res) => {

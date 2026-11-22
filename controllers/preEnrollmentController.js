@@ -54,12 +54,15 @@ export const getApplicant = async (req, res) => {
 };
 export const approveApplicant = async (req, res) => {
   try {
-    const approved = await pe.approveApplicant({
-      application_id: req.body.application_id,
-      sub_date: req.body.sub_date,
-      from_time: req.body.from_time,
-      to_time: req.body.to_time,
-    });
+    const approved = await pe.approveApplicant(
+      {
+        application_id: req.body.application_id,
+        sub_date: req.body.sub_date,
+        from_time: req.body.from_time,
+        to_time: req.body.to_time,
+      },
+      req.user.user_id,
+    );
 
     await sendApplicationApproval({
       application_id: approved.application_id,
@@ -85,45 +88,57 @@ export const approveApplicant = async (req, res) => {
 
 export const bulkApproveApplicants = async (req, res) => {
   try {
-    const approved = await pe.bulkApproveApplicants({
-      application_ids: req.body.application_ids,
-      sub_date: req.body.sub_date,
-      from_time: req.body.from_time,
-      to_time: req.body.to_time,
-    });
+    const approved = await pe.bulkApproveApplicants(
+      {
+        application_ids: req.body.application_ids,
+        sub_date: req.body.sub_date,
+        from_time: req.body.from_time,
+        to_time: req.body.to_time,
+      },
+      req.user.user_id,
+    );
+
+    const emailResults = [];
 
     for (const applicant of approved.applications) {
-      await sendApplicationApproval({
-        application_id: applicant.application_id,
-        application_no: applicant.application_no,
-        applicant_name: applicant.applicant_name,
-        sub_date: applicant.sub_date,
-        from_time: applicant.from_time,
-        to_time: applicant.to_time,
-      });
+      try {
+        await sendApplicationApproval({
+          application_id: applicant.application_id,
+          application_no: applicant.application_no,
+          applicant_name: applicant.applicant_name,
+          sub_date: applicant.sub_date,
+          from_time: applicant.from_time,
+          to_time: applicant.to_time,
+        });
+
+        emailResults.push({
+          application_no: applicant.application_no,
+          sent: true,
+        });
+      } catch (emailError) {
+        console.error(
+          `Failed to send approval email for ${applicant.application_no}:`,
+          emailError,
+        );
+
+        emailResults.push({
+          application_no: applicant.application_no,
+          sent: false,
+        });
+      }
     }
 
-    // await Promise.all(
-    //   approved.applications.map((applicant) =>
-    //     sendApplicationApproval({
-    //       application_id: applicant.application_id,
-    //       application_no: applicant.application_no,
-    //       applicant_name: applicant.applicant_name,
-    //       sub_date: applicant.sub_date,
-    //       from_time: applicant.from_time,
-    //       to_time: applicant.to_time,
-    //     }),
-    //   ),
-    // );
-
-    res.status(200).json({
-      message: "Applicants approved and confirmation emails sent.",
+    return res.status(200).json({
+      success: true,
+      message: "Bulk approval completed.",
       data: approved,
+      email_results: emailResults,
     });
   } catch (error) {
     console.error("Failed to bulk approve applicants:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -145,10 +160,13 @@ export const getRejectionReasons = async (req, res) => {
 
 export const rejectApplicant = async (req, res) => {
   try {
-    const rejected = await pe.rejectApplicant({
-      application_id: req.params.application_id,
-      rejection_reason_id: req.body.rejection_reason_id,
-    });
+    const result = await pe.rejectApplicant(
+      {
+        application_id: req.body.application_id,
+        rejection_reason_id: req.body.rejection_reason_id,
+      },
+      req.user.user_id,
+    );
     res
       .status(200)
       .json({ message: "Applicant rejected successfully", data: rejected });
@@ -180,10 +198,13 @@ export const getApprovedApplicants = async (req, res) => {
 
 export const enrollApplicant = async (req, res) => {
   try {
-    const student = await pe.enrollApplicant({
-      app_approval_id: req.params.app_approval_id,
-      received_by: req.user.user_id,
-    });
+    const student = await pe.enrollApplicant(
+      {
+        app_approval_id: req.params.app_approval_id,
+        received_by: req.user.user_id,
+      },
+      req.user.user_id,
+    );
     res.status(201).json({ message: "Enrolling Successful", data: student });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -192,10 +213,13 @@ export const enrollApplicant = async (req, res) => {
 
 export const rejectApprovedApplicant = async (req, res) => {
   try {
-    const result = await pe.rejectApprovedApplicant({
-      app_approval_id: req.params.app_approval_id,
-      rejection_reason_id: req.body.rejection_reason_id,
-    });
+    const result = await pe.rejectApprovedApplicant(
+      {
+        app_approval_id: req.params.app_approval_id,
+        rejection_reason_id: req.body.rejection_reason_id,
+      },
+      req.user.user_id,
+    );
 
     res.status(201).json({
       message: "Applicant rejected successfully.",
@@ -219,10 +243,13 @@ export const rescheduleApprovedApplicant = async (req, res) => {
       to_time: req.body.to_time,
     });
 
-    res.status(200).json({
-      message: "Applicant rescheduled successfully.",
-      data: result,
-    });
+    res.status(200).json(
+      {
+        message: "Applicant rescheduled successfully.",
+        data: result,
+      },
+      req.user.user_id,
+    );
   } catch (error) {
     console.error("Reschedule approved applicant error:", error);
 
