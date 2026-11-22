@@ -131,25 +131,12 @@ export const applyApplication = async (data) => {
           })
         : [];
 
-      const processedParentEmails = new Set();
-
       for (const parent of parents) {
         const parentEmail = parent.p_email?.trim().toLowerCase() || null;
 
         let parent_id;
 
-        // Prevent duplicate parent links within the same application.
-        if (parentEmail && processedParentEmails.has(parentEmail)) {
-          throw new Error(
-            `The same parent email (${parentEmail}) was entered more than once for this student.`,
-          );
-        }
-
-        if (parentEmail) {
-          processedParentEmails.add(parentEmail);
-        }
-
-        // 6. Look for an existing parent profile using email
+        // 6. Look for an existing parent profile using email.
         let existingParent = null;
 
         if (parentEmail) {
@@ -191,7 +178,6 @@ export const applyApplication = async (data) => {
           })
           .executeTakeFirst();
       }
-
       applications.push({
         application_id,
         application_no: appNo,
